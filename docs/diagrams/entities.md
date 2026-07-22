@@ -1,5 +1,21 @@
 ## エンティティ
 
+### User（利用者）
+
+#### 役割
+
+Life Plannerを利用し、
+資産口座、手取り収入および目的を所有する主体。
+
+Phase1では、
+あらかじめ用意された利用者のみを対象とする。
+
+#### 関連
+
+- AssetAccount
+- NetIncome
+- Objective
+
 ### AssetAccount（資産口座）
 
 役割
