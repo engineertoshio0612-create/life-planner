@@ -1,6 +1,6 @@
 ## エンティティ
 
-### User（利用者）
+### Users（利用者）
 
 #### 役割
 
@@ -15,6 +15,7 @@ Phase1では、
 - AssetAccount
 - NetIncome
 - Objective
+- MonthEndAssetSnapshot
 
 ### AssetAccount（資産口座）
 
@@ -24,7 +25,7 @@ Phase1では、
 関連
 - HoldingAsset（保有商品）
 - MonthEndAssetBalance（月末資産残高）
-- MonthEndAssetSnapshot（月末資産状況）※設計保留
+- MonthEndAssetSnapshot（月末資産状況）
 - BalanceRecordingUnit（残高記録単位）
 - AssetAccountAvailableSetting（資産口座利用可能設定）
 
@@ -36,7 +37,7 @@ Phase1では、
 関連
 - AssetAccount（資産口座）
 - MonthEndHoldingValue（商品別月末評価額）
-- MonthEndAssetSnapshot（月末資産状況）※設計保留
+- MonthEndAssetSnapshot（月末資産状況）
 
 ### MonthEndHoldingValue（商品別月末評価額）
 
@@ -63,6 +64,7 @@ Phase1では、
 - 必要な資産情報が揃っているか、および確定状態を管理する
 
 関連
+- Users（利用者）
 - TargetYearMonth（対象年月）
 - MonthEndAssetBalance（月末資産残高）
 - MonthEndHoldingValue（商品別月末評価額）
@@ -241,12 +243,14 @@ Phase1では、
 - 年月単位で資産状況や手取り収入の対象期間を表す値
 
 利用先
-- MonthEndHoldingValue（商品別月末評価額）
-- MonthEndAssetBalance（月末資産残高）
 - MonthEndAssetSnapshot（月末資産状況）
 - NetIncome（手取り収入）
 - Objective（目的）
 - AssessmentHistory（判定履歴）
+- MonthEndAssetBalance（月末資産残高）
+  - MonthEndAssetSnapshotを通じて対象年月を参照する
+- MonthEndHoldingValue（商品別月末評価額）
+  - MonthEndAssetSnapshotを通じて対象年月を参照する
 
 
 ## 属性（エンティティに属する）
