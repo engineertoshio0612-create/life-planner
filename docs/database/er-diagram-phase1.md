@@ -25,7 +25,7 @@ erDiagram
         int id PK
         int user_id FK
         varchar name
-        tinyint balance_recording_unit
+        smallint balance_recording_unit
     }
 
     net_incomes {
@@ -57,8 +57,8 @@ erDiagram
         int average_net_income
         int remaining_funds
         int required_remaining_funds
-        tinyint assessment_result
-        datetime assessed_at
+        smallint assessment_result
+        timestamp assessed_at
     }
 
     holding_assets {
@@ -79,9 +79,9 @@ erDiagram
         int id PK
         int user_id FK
         char target_year_month
-        datetime confirmed_at
-        datetime created_at
-        datetime updated_at
+        timestamp confirmed_at
+        timestamp created_at
+        timestamp updated_at
     }
 
     month_end_asset_balances {
