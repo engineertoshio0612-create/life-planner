@@ -17,19 +17,19 @@ erDiagram
     objectives ||--o{ assessment_histories : 判定履歴を持つ
 
     users {
-        int id PK
+        bigint id PK
         varchar name
     }
 
     asset_accounts {
-        int id PK
+        bigint id PK
         int user_id FK
         varchar name
         smallint balance_recording_unit
     }
 
     net_incomes {
-        int id PK
+        bigint id PK
         int user_id FK
         char target_year_month
         int amount
@@ -46,7 +46,7 @@ erDiagram
     }
 
     assessment_histories {
-        int id PK
+        bigint id PK
         int objective_id FK
         char target_year_month
         varchar objective_name
@@ -62,13 +62,13 @@ erDiagram
     }
 
     holding_assets {
-        int id PK
+        bigint id PK
         int asset_account_id FK
         varchar name
     }
 
     asset_account_available_settings {
-        int id PK
+        bigint id PK
         int asset_account_id FK
         char start_year_month
         char end_year_month
@@ -76,7 +76,7 @@ erDiagram
     }
 
     month_end_asset_snapshots {
-        int id PK
+        bigint id PK
         int user_id FK
         char target_year_month
         timestamp confirmed_at
@@ -85,7 +85,7 @@ erDiagram
     }
 
     month_end_asset_balances {
-        int id PK
+        bigint id PK
         int month_end_asset_snapshot_id FK
         int asset_account_id FK
         varchar asset_account_name
@@ -93,7 +93,7 @@ erDiagram
     }
 
     month_end_holding_values {
-        int id PK
+        bigint id PK
         int month_end_asset_snapshot_id FK
         int holding_asset_id FK
         varchar holding_asset_name
