@@ -104,10 +104,10 @@ erDiagram
 
 ## 補足
 
-- Users は AssetAccount（資産口座）  を複数所有できる
-- Users は NetIncome（手取り収入） を複数所有できる
-- Users は Objective(目的)  を複数所有できる
-- Users は TargetYearMonth（対象年月） の MonthEndAssetSnapshot(月末資産状況) を記録できる
+- Users（利用者） は AssetAccount（資産口座）  を複数所有できる
+- Users（利用者） は NetIncome（手取り収入） を複数所有できる
+- Users（利用者） は Objective(目的)  を複数所有できる
+- Users（利用者） は TargetYearMonth（対象年月） の MonthEndAssetSnapshot(月末資産状況) を記録できる
 - AssetAccount（資産口座）は、複数のHoldingAsset（保有商品）を保有できる
 - AssetAccount（資産口座）は、適用期間ごとに利用可能資産へ含めるかどうかの設定を持つ
 - MonthEndAssetSnapshot（月末資産状況）は、複数のMonthEndAssetBalance（月末資産残高）を含む
