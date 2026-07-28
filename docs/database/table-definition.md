@@ -265,6 +265,55 @@ Laravelの標準命名規約を採用する。
 
 ---
 
+## 7. net_incomes
 
+### 概要
 
-...
+利用者の対象年月ごとの手取り収入を記録する。
+
+### カラム一覧
+
+| 論理名     | 物理名               | 型         |  長さ | NULL |  PK |  FK | UNIQUE | DEFAULT | 備考 |                          |
+| ------- | ----------------- | --------- | :-: | :--: | :-: | :-: | :----: | ------- | -- | ------------------------ |
+| 手取り収入ID | id                | bigint    |     |   ×  |  ○  |  ×  |    ×   |         |    | IDENTITY（Auto Increment） |
+| 利用者ID   | user_id           | bigint    |     |   ×  |  ×  |  ○  |    ×   |         |    |                          |
+| 対象年月    | target_year_month | char      |  7  |   ×  |  ×  |  ×  |    ×   |         |    | YYYY-MM形式                |
+| 手取り収入額  | amount            | int       |     |   ×  |  ×  |  ×  |    ×   |         |    | 日本円の整数値                  |
+| メモ      | memo              | text      |     |   ○  |  ×  |  ×  |    ×   |         |    | 任意入力                     |
+| 登録日時    | created_at        | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |    |                          |
+| 更新日時    | updated_at        | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |    |                          |
+
+### 制約
+
+* user_id は users.id を参照する外部キー
+* 同一利用者について、対象年月ごとの手取り収入は1件のみ登録できる
+* target_year_month は `YYYY-MM` 形式とする
+* amount は0以上とする
+* CHECK：`target_year_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+* CHECK：`amount >= 0`
+
+| 制約名                                          | 対象                         | 内容                                  |
+| ----------------------------------------------- | ---------------------------- | ------------------------------------- |
+| net_incomes_user_id_foreign                     | user_id                      | users.idを参照する外部キー            |
+| net_incomes_user_id_target_year_month_unique    | user_id, target_year_month   | 同一利用者の対象年月ごとに1件のみ許可 |
+| net_incomes_target_year_month_check             | target_year_month            | YYYY-MM形式のみ許可                   |
+| net_incomes_amount_check                        | amount                       | 0以上のみ許可                         |
+
+### インデックス
+
+| インデックス名                                      | 対象                         | 条件 | 目的                     |
+| -------------------------------------------- | -------------------------- | -- | ---------------------- |
+| net_incomes_user_id_target_year_month_unique | user_id, target_year_month | -  | 同一利用者における対象年月ごとの重複登録防止 |
+
+### リレーション
+
+* users 1 --- N net_incomes
+
+### 設計方針
+
+* 手取り収入は利用者に帰属する
+* 手取り収入は利用者ごとに対象年月単位で1件のみ保持する
+* 金額は日本円の整数値として保持する
+* 直近3か月の平均手取り収入は、本テーブルの記録を基に算出する
+* メモは手取り収入に関する補足情報を任意で記録するために保持する
+
