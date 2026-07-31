@@ -68,8 +68,6 @@ Phase1では、
 - TargetYearMonth（対象年月）
 - MonthEndAssetBalance（月末資産残高）
 - MonthEndHoldingValue（商品別月末評価額）
-- Confirmed（確定済み）
-- Unconfirmed（未確定）
 
 ### NetIncome（手取り収入）
 
@@ -214,25 +212,6 @@ Phase1では、
 
 利用先
 - AssessmentHistory（判定履歴）
-
-
-## 状態
-
-### Confirmed（確定済み）
-
-役割
-- 対象年月に必要な資産情報がすべて登録され、利用者によって確定された状態
-
-対象
-- MonthEndAssetSnapshot（月末資産状況）
-
-### Unconfirmed（未確定）
-
-役割
-- 対象年月の資産情報が不足している、または修正後に再確定されていない状態
-
-対象
-- MonthEndAssetSnapshot（月末資産状況）
 
 
 ## 値オブジェクト（将来的）

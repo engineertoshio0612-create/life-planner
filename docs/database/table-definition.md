@@ -418,7 +418,6 @@ Laravelの標準命名規約を採用する。
 * assessment_result は以下の値のみ許可する
   * `1`：達成可能
   * `2`：達成困難
-  * `3`：判定不可
 * 判定に必要な情報が不足している場合は判定不可とし、判定履歴を保存しない
 * CHECK：`target_year_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
 * CHECK：`planned_year_month IS NULL OR planned_year_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
@@ -428,7 +427,7 @@ Laravelの標準命名規約を採用する。
 * CHECK：`average_net_income >= 0`
 * CHECK：`remaining_funds = available_assets - required_expense - next_month_credit_card_payment`
 * CHECK：`required_remaining_funds = average_net_income * 3`
-* CHECK：`assessment_result IN (1, 2, 3)`
+* CHECK：`assessment_result IN (1, 2)`
 
 | 制約名                                                 | 対象                                                                                  | 内容                                    |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------- |

@@ -14,6 +14,7 @@ erDiagram
     holding_assets ||--o{ month_end_holding_values : 評価額を記録する
     month_end_asset_snapshots ||--o{ month_end_asset_balances : 口座残高を含む
     month_end_asset_snapshots ||--o{ month_end_holding_values : 商品評価額を含む
+    month_end_asset_snapshots ||--o{ assessment_histories : 判定に使用される
     objectives ||--o{ assessment_histories : 判定履歴を持つ
 
     users {
@@ -30,15 +31,15 @@ erDiagram
 
     net_incomes {
         bigint id PK
-        int user_id FK
+        bigint user_id FK
         char target_year_month
         int amount
         text memo
     }
 
     objectives {
-        int id PK
-        int user_id FK
+        bigint id PK
+        bigint user_id FK
         varchar name
         char planned_year_month
         int required_expense
@@ -47,7 +48,8 @@ erDiagram
 
     assessment_histories {
         bigint id PK
-        int objective_id FK
+        bigint objective_id FK
+        bigint month_end_asset_snapshot_id FK
         char target_year_month
         varchar objective_name
         char planned_year_month
@@ -63,13 +65,13 @@ erDiagram
 
     holding_assets {
         bigint id PK
-        int asset_account_id FK
+        bigint asset_account_id FK
         varchar name
     }
 
     asset_account_available_settings {
         bigint id PK
-        int asset_account_id FK
+        bigint asset_account_id FK
         char start_year_month
         char end_year_month
         boolean is_available
@@ -77,8 +79,9 @@ erDiagram
 
     month_end_asset_snapshots {
         bigint id PK
-        int user_id FK
+        bigint user_id FK
         char target_year_month
+        boolean is_confirmed
         timestamp confirmed_at
         timestamp created_at
         timestamp updated_at
@@ -86,7 +89,7 @@ erDiagram
 
     month_end_asset_balances {
         bigint id PK
-        int month_end_asset_snapshot_id FK
+        bigint month_end_asset_snapshot_id FK
         int asset_account_id FK
         varchar asset_account_name
         int asset_balance
@@ -94,7 +97,7 @@ erDiagram
 
     month_end_holding_values {
         bigint id PK
-        int month_end_asset_snapshot_id FK
+        bigint month_end_asset_snapshot_id FK
         int holding_asset_id FK
         varchar holding_asset_name
         int valuation_amount
