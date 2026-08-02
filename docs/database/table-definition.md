@@ -19,14 +19,15 @@ Life Plannerを利用する利用者。
 
 ### カラム一覧
 
-|論理名|物理名|型|長さ|NULL|PK|FK|UNIQUE|DEFAULT|備考|
-|---|---|---|:-:|:-:|:-:|:-:|:-:|---|---|
-|利用者ID|id|bigint||×|○|×|×|||IDENTITY（Auto Increment）|
-|名前|name|varchar|100|×|×|×|×|||
-|メールアドレス|email|varchar|255|×|×|×|○|||
-|登録日時|created_at|timestamp||×|×|×|×|||
-|更新日時|updated_at|timestamp||×|×|×|×|||
-|削除日時|deleted_at|timestamp||○|×|×|×||論理削除|
+| 論理名             | 物理名       | 型        | 長さ | NULL | PK | FK | UNIQUE | DEFAULT | 備考                       |
+| ------------------ | ------------ | --------- | :--: | :--: | :-: | :-: | :----: | ------- | -------------------------- |
+| 利用者ID           | id           | bigint    |      |  ×   | ○  |  ×  |   ×    |         | IDENTITY（Auto Increment） |
+| 名前               | name         | varchar   | 100  |  ×   | ×  |  ×  |   ×    |         |                            |
+| メールアドレス     | email        | varchar   | 255  |  ×   | ×  |  ×  |   ○    |         |                            |
+| 登録日時           | created_at   | timestamp |      |  ×   | ×  |  ×  |   ×    |         |                            |
+| 更新日時           | updated_at   | timestamp |      |  ×   | ×  |  ×  |   ×    |         |                            |
+| 削除日時           | deleted_at   | timestamp |      |  ○   | ×  |  ×  |   ×    |         | 論理削除                   |
+| デモシナリオ説明   | description  | varchar   | 255  |  ○   | ×  |  ×  |   ×    |         | ポートフォリオ確認者向けの説明 |
 
 ### 制約
 
