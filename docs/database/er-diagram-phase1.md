@@ -26,6 +26,7 @@ erDiagram
         bigint id PK
         int user_id FK
         varchar name
+        smallint asset_type
         smallint balance_recording_unit
     }
 

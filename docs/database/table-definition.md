@@ -65,15 +65,16 @@ Laravelの標準命名規約を採用する。
 
 ### カラム一覧
 
-|論理名|物理名|型|長さ|NULL|PK|FK|UNIQUE|DEFAULT|備考|
-|---|---|---|:-:|:-:|:-:|:-:|:-:|---|---|
-|資産口座ID|id|bigint||×|○|×|×|||IDENTITY（Auto Increment）|
-|利用者ID|user_id|bigint||×|×|○|×||||
-|名前|name|varchar|100|×|×|×|×|||
-|残高記録単位|balance_recording_unit|smallint||×|×|×|×||CHECK制約|
-|登録日時|created_at|timestamp||×|×|×|×|||
-|更新日時|updated_at|timestamp||×|×|×|×|||
-|削除日時|deleted_at|timestamp||○|×|×|×||論理削除|
+| 論理名         | 物理名                 | 型        | 長さ | NULL | PK | FK | UNIQUE | DEFAULT | 備考                       |
+| -------------- | ---------------------- | --------- | :--: | :--: | :-: | :-: | :----: | ------- | -------------------------- |
+| 資産口座ID     | id                     | bigint    |      |  ×   | ○  |  ×  |   ×    |         | IDENTITY（Auto Increment） |
+| 利用者ID       | user_id                | bigint    |      |  ×   | ×  |  ○  |   ×    |         |                            |
+| 名前           | name                   | varchar   | 100  |  ×   | ×  |  ×  |   ×    |         |                            |
+| 資産種別       | asset_type             | smallint  |      |  ×   | ×  |  ×  |   ×    |         | CHECK制約                  |
+| 残高記録単位   | balance_recording_unit | smallint  |      |  ×   | ×  |  ×  |   ×    |         | CHECK制約                  |
+| 登録日時       | created_at             | timestamp |      |  ×   | ×  |  ×  |   ×    |         |                            |
+| 更新日時       | updated_at             | timestamp |      |  ×   | ×  |  ×  |   ×    |         |                            |
+| 削除日時       | deleted_at             | timestamp |      |  ○   | ×  |  ×  |   ×    |         | 論理削除                   |
 
 ### 制約
 
@@ -83,6 +84,13 @@ Laravelの標準命名規約を採用する。
   * `1`：口座単位
   * `2`：商品単位
 * CHECK：`balance_recording_unit IN (1, 2)`
+* asset_type は以下の値のみ許可する
+  * `1`：現金
+  * `2`：銀行
+  * `3`：証券
+  * `4`：iDeCo
+  * `5`：企業型DC
+  * `9`：その他
 
 | 制約名                                         | 対象                     | 内容                |
 | ------------------------------------------- | ---------------------- | ----------------- |
