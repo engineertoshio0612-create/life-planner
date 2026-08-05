@@ -91,6 +91,7 @@ Laravelの標準命名規約を採用する。
   * `4`：iDeCo
   * `5`：企業型DC
   * `9`：その他
+* CHECK：`asset_type IN (1, 2, 3, 4, 5, 9)`
 
 | 制約名                                         | 対象                     | 内容                |
 | ------------------------------------------- | ---------------------- | ----------------- |
@@ -133,6 +134,7 @@ Laravelの標準命名規約を採用する。
 | 保有商品ID | id               | bigint    |     |   ×  |  ○  |  ×  |    ×   |         |      | IDENTITY（Auto Increment） |
 | 資産口座ID | asset_account_id | bigint    |     |   ×  |  ×  |  ○  |    ×   |         |      |                          |
 | 名前     | name             | varchar   | 100 |   ×  |  ×  |  ×  |    ×   |         |      |                          |
+| 商品種別   | product_type     | smallint  | 100 |   ×  |  ×  |  ×  |    ×   |         |      | CHECK制約                |
 | 登録日時   | created_at       | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |      |                          |
 | 更新日時   | updated_at       | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |      |                          |
 | 削除日時   | deleted_at       | timestamp |     |   ○  |  ×  |  ×  |    ×   |         | 論理削除 |                          |
@@ -141,6 +143,15 @@ Laravelの標準命名規約を採用する。
 
 * asset_account_id は asset_accounts.id を参照する外部キー
 * 未削除の保有商品について、asset_account_id と name の組み合わせは一意とする
+* product_type は以下の値のみ許可する
+  * `1`：投資信託
+  * `2`：国内株
+  * `3`：外国株
+  * `4`：ETF
+  * `5`：預金
+  * `6`：債券
+  * `9`：その他
+* CHECK：`product_type IN (1, 2, 3, 4, 5, 6, 9)`
 
 | 制約名                                     | 対象               | 内容                         |
 | --------------------------------------- | ---------------- | -------------------------- |

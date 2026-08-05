@@ -91,10 +91,11 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| HLD-001 | 保有商品 | 保有商品一覧取得 | GET | `/api/v1/holding-assets` | 操作対象利用者の保有商品一覧を取得する | `holding_assets`、`asset_accounts` | 5.8 一覧表示、5.9 表示順 | [HLD-001](./details/holding-assets.md#hld-001-保有商品一覧取得) |
-| HLD-002 | 保有商品 | 保有商品登録 | POST | `/api/v1/holding-assets` | 商品単位で管理する資産口座へ保有商品を登録する | `holding_assets`、`asset_accounts` | 5.2 登録 | [HLD-002](./details/holding-assets.md#hld-002-保有商品登録) |
-| HLD-003 | 保有商品 | 保有商品詳細取得 | GET | `/api/v1/holding-assets/{holdingAssetId}` | 指定した保有商品の詳細を取得する | `holding_assets`、`asset_accounts` | 5. 保有商品管理 | [HLD-003](./details/holding-assets.md#hld-003-保有商品詳細取得) |
-| HLD-004 | 保有商品 | 保有商品更新 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品名、商品種別、備考、利用状態などを更新する | `holding_assets`、`asset_accounts` | 5.3 編集、5.7 無効化 | [HLD-004](./details/holding-assets.md#hld-004-保有商品更新) |
+| HLD-001 | 保有商品 | 保有商品一覧取得 | GET | `/api/v1/holding-assets` | 操作対象利用者の保有商品一覧を取得する | `holding_assets`、`asset_accounts` | 5.8 一覧表示、5.9 表示順 | [HLD-001](./details/holding-assets.md#has-001-保有商品一覧取得) |
+| HLD-002 | 保有商品 | 保有商品登録 | POST | `/api/v1/holding-assets` | 商品単位で管理する資産口座へ保有商品を登録する | `holding_assets`、`asset_accounts` | 5.2 登録 | [HLD-002](./details/holding-assets.md#has-002-保有商品登録) |
+| HLD-003 | 保有商品 | 保有商品詳細取得 | GET | `/api/v1/holding-assets/{holdingAssetId}` | 指定した保有商品の詳細を取得する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-003](./details/holding-assets.md#has-003-保有商品詳細取得) |
+| HLD-004 | 保有商品 | 保有商品更新 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品名、商品種別および備考を更新する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-004](./details/holding-assets.md#has-004-保有商品更新) |
+| HLD-005 | 保有商品 | 保有商品無効化 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品を無効化する | `holding_assets` | 5.7 無効化 | [HLD-005](./details/holding-assets.md#has-005-保有商品無効化) |
 
 ---
 
@@ -105,7 +106,7 @@ API詳細設計書、
 | INC-001 | 手取り収入 | 手取り収入一覧取得 | GET | `/api/v1/net-incomes` | 対象年月ごとの手取り収入一覧を取得する | `net_incomes` | 9.5 一覧表示 | [INC-001](./details/net-incomes.md#inc-001-手取り収入一覧取得) |
 | INC-002 | 手取り収入 | 手取り収入登録 | POST | `/api/v1/net-incomes` | 対象年月の手取り収入を登録する | `net_incomes` | 9.2 登録 | [INC-002](./details/net-incomes.md#inc-002-手取り収入登録) |
 | INC-003 | 手取り収入 | 手取り収入詳細取得 | GET | `/api/v1/net-incomes/{netIncomeId}` | 指定した手取り収入の詳細を取得する | `net_incomes` | 9. 手取り収入管理 | [INC-003](./details/net-incomes.md#inc-003-手取り収入詳細取得) |
-| INC-004 | 手取り収入 | 手取り収入更新・取消 | PATCH | `/api/v1/net-incomes/{netIncomeId}` | 手取り収入、備考または取消状態を更新する | `net_incomes` | 9.3 編集、9.4 取消 | [INC-004](./details/net-incomes.md#inc-004-手取り収入更新取消) |
+| INC-004 | 手取り収入 | 手取り収入更新 | PATCH | `/api/v1/net-incomes/{netIncomeId}` | 手取り収入および備考を更新する | `net_incomes` | 9.3 編集 | [INC-004](./details/net-incomes.md#inc-004-手取り収入更新) |
 | INC-005 | 手取り収入 | 平均手取り収入取得 | GET | `/api/v1/net-incomes/average` | 指定した判定対象年月以前の連続する3か月の平均手取り収入を取得する | `net_incomes` | 9.6 平均手取り収入、9.7 判定対象、9.8 データ不足 | [INC-005](./details/net-incomes.md#inc-005-平均手取り収入取得) |
 
 ---
