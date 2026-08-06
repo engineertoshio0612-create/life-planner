@@ -118,7 +118,9 @@ API詳細設計書、
 | OBJ-001 | 目的 | 目的一覧取得 | GET | `/api/v1/objectives` | 操作対象利用者の目的一覧を取得する | `objectives` | 10.5 一覧表示 | [OBJ-001](./details/objectives.md#obj-001-目的一覧取得) |
 | OBJ-002 | 目的 | 目的登録 | POST | `/api/v1/objectives` | 目的名、実施予定年月、必要支出額などを登録する | `objectives` | 10.2 登録 | [OBJ-002](./details/objectives.md#obj-002-目的登録) |
 | OBJ-003 | 目的 | 目的詳細取得 | GET | `/api/v1/objectives/{objectiveId}` | 指定した目的の詳細を取得する | `objectives` | 10. 目的管理 | [OBJ-003](./details/objectives.md#obj-003-目的詳細取得) |
-| OBJ-004 | 目的 | 目的更新 | PATCH | `/api/v1/objectives/{objectiveId}` | 目的情報または利用状態を更新する | `objectives` | 10.3 編集、10.4 無効化 | [OBJ-004](./details/objectives.md#obj-004-目的更新) |
+| OBJ-004 | 目的 | 目的更新 | PATCH | `/api/v1/objectives/{objectiveId}` | 目的情報を更新する | `objectives` | 10.3 編集 | [OBJ-004](./details/objectives.md#obj-004-目的更新) |
+| OBJ-005 | 目的 | 目的無効化 | PATCH | `/api/v1/objectives/{objectiveId}` | 指定した目的を無効化する | `objectives` | 10.4 無効化 | [OBJ-005](./details/objectives.md#obj-005-目的無効化) |
+| OBJ-006 | 目的 | 目的達成判定 | POST | `/api/v1/objectives/{objectiveId}/assessments` | 指定した目的の達成可否を判定し、判定履歴を登録する | `objectives`、`assessment_histories`、`month_end_asset_snapshots`、`net_incomes` | 11. 目的達成判定 | [OBJ-006](./details/objectives.md#obj-006-目的達成判定) |
 
 ---
 
@@ -197,16 +199,16 @@ Phase1で設計対象とするAPIは、
 |---|---:|
 | 利用者 | 1 |
 | 資産口座 | 6 |
-| 保有商品 | 4 |
+| 保有商品 | 5 |
 | 手取り収入 | 5 |
-| 目的 | 4 |
+| 目的 | 6 |
 | 月末資産状況 | 5 |
 | 月末資産残高 | 3 |
 | 商品別月末評価額 | 3 |
 | 資産状況・資産推移 | 3 |
 | 目的達成判定 | 4 |
 | CSVインポート | 6 |
-| **合計** | **44** |
+| **合計** | **47** |
 
 ---
 

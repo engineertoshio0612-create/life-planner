@@ -347,17 +347,19 @@ Laravelの標準命名規約を採用する。
 
 ### カラム一覧
 
-| 論理名    | 物理名                | 型         |  長さ | NULL |  PK |  FK | UNIQUE | DEFAULT | 備考 |                          |
-| ------ | ------------------ | --------- | :-: | :--: | :-: | :-: | :----: | ------- | -- | ------------------------ |
-| 目的ID   | id                 | bigint    |     |   ×  |  ○  |  ×  |    ×   |         |    | IDENTITY（Auto Increment） |
-| 利用者ID  | user_id            | bigint    |     |   ×  |  ×  |  ○  |    ×   |         |    |                          |
-| 目的名    | name               | varchar   | 100 |   ×  |  ×  |  ×  |    ×   |         |    |                          |
-| 実施予定年月 | planned_year_month | char      |  7  |   ○  |  ×  |  ×  |    ×   |         |    | YYYY-MM形式、任意入力           |
-| 必要支出額  | required_expense   | int       |     |   ×  |  ×  |  ×  |    ×   |         |    | 日本円の整数値                  |
-| メモ     | memo               | text      |     |   ○  |  ×  |  ×  |    ×   |         |    | 任意入力                     |
-| 登録日時   | created_at         | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |    |                          |
-| 更新日時   | updated_at         | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |    |                          |
-| 削除日時   | deleted_at         | timestamp |     |   ○  |  ×  |  ×  |    ×   |         |    | 論理削除                     |
+| 論理名    | 物理名                  | 型         |  長さ | NULL |  PK |  FK | UNIQUE | DEFAULT | 備考                       |
+| -------- | -------------------- | --------- | :-: | :--: | :-: | :-: | :----: | ------- | ------------------------ |
+| 目的ID    | `id`                 | bigint    |     |   ×  |  ○  |  ×  |    ×   |         | IDENTITY（Auto Increment） |
+| 利用者ID  | `user_id`            | bigint    |     |   ×  |  ×  |  ○  |    ×   |         |                          |
+| 目的名    | `name`               | varchar   | 100 |   ×  |  ×  |  ×  |    ×   |         |                          |
+| 実施予定年月 | `planned_year_month` | char      |  7  |   ○  |  ×  |  ×  |    ×   |         | `YYYY-MM` 形式、任意入力        |
+| 必要支出額  | `required_expense`   | int       |     |   ×  |  ×  |  ×  |    ×   |         | 日本円の整数値                  |
+| メモ     | `memo`               | text      |     |   ○  |  ×  |  ×  |    ×   |         | 任意入力                     |
+| 利用状態   | `enabled`            | boolean   |     |   ×  |  ×  |  ×  |    ×   | `true`  | `true`：有効、`false`：無効     |
+| 登録日時   | `created_at`         | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |                          |
+| 更新日時   | `updated_at`         | timestamp |     |   ×  |  ×  |  ×  |    ×   |         |                          |
+| 削除日時   | `deleted_at`         | timestamp |     |   ○  |  ×  |  ×  |    ×   |         | 論理削除                     |
+
 
 ### 制約
 
