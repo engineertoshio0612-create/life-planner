@@ -44,7 +44,7 @@
 
 ## 1. 概要
 
-操作対象となるデモ利用者に登録された
+操作対象となる利用者に登録された
 目的一覧を取得する。
 
 目的は、
@@ -106,11 +106,11 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、
+`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された
@@ -154,7 +154,7 @@ Phase1では、
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -162,7 +162,7 @@ Phase1では、
 ```http
 GET /api/v1/objectives
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -181,13 +181,13 @@ X-Demo-User-Id: 1
 クエリパラメータを受け付けない。
 
 操作対象利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+`X-User-Id`リクエストヘッダーで指定する。
 
 ---
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -272,7 +272,7 @@ created_at ASC
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者の目的一覧取得
     ↓
@@ -376,13 +376,13 @@ API共通方針で定めた
 ### 18.1 利用者が存在しない場合
 
 指定された利用者が存在しない場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -394,19 +394,19 @@ API共通方針で定めた
 
 ### 18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -444,9 +444,9 @@ API共通方針で定めたID形式に一致しない場合は、
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
 
 エラーコードの正式な定義は、
@@ -548,7 +548,7 @@ HTTP GETを使用する。
 
 ### 24.6 ヘッダー
 
-- `X-Demo-User-Id`未指定で400となること
+- `X-User-Id`未指定で400となること
 - 利用者ID形式不正で400となること
 - 存在しない利用者IDで404となること
 - 論理削除済み利用者で404となること
@@ -581,7 +581,7 @@ HTTP GETを使用する。
 ### 25.1 Action
 
 HTTPリクエストを受け付け、
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 目的一覧取得UseCaseを呼び出し、
 処理結果をResponderへ渡す。
@@ -625,7 +625,7 @@ Actionへ直接記述しない。
 
 ```php
 $objectives = Objective::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->orderByDesc('enabled')
     ->orderBy('planned_year_month')
     ->orderBy('created_at')
@@ -718,14 +718,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -743,9 +743,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
 
 SQL、
@@ -890,8 +890,8 @@ const formatted =
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `INVALID_DEMO_USER_ID` | 共通エラー表示 |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `INVALID_USER_ID` | 共通エラー表示 |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示 |
 
 ---
@@ -1015,7 +1015,7 @@ API共通方針に従って
 
 ## 1. 概要
 
-操作対象となるデモ利用者の
+操作対象となる利用者の
 目的を登録する。
 
 目的には、
@@ -1081,12 +1081,12 @@ POST
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 登録する目的は、
@@ -1100,7 +1100,7 @@ X-Demo-User-Id: 1
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
 登録直後の利用状態は、
 `enabled = true`
@@ -1129,7 +1129,7 @@ X-Demo-User-Id: 1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -1139,7 +1139,7 @@ X-Demo-User-Id: 1
 POST /api/v1/objectives
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -1227,7 +1227,7 @@ X-Demo-User-Id: 1
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -1343,7 +1343,7 @@ X-Demo-User-Id: 1
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 目的ID検証
     ↓
@@ -1490,13 +1490,13 @@ API共通方針で定めた
 ### 18.3 利用者が存在しない場合
 
 指定された利用者が存在しない場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -1549,9 +1549,9 @@ API共通方針で定めた
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `OBJECTIVE_ALREADY_EXISTS` | 409 | 同一利用者で目的名が重複している | × |
 | `VALIDATION_ERROR` | 422 | 入力値が不正である | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -1701,7 +1701,7 @@ Phase1では、
 
 ### 24.9 ヘッダー
 
-- `X-Demo-User-Id`未指定で400となること
+- `X-User-Id`未指定で400となること
 - 利用者ID形式不正で400となること
 - 存在しない利用者IDで404となること
 - 論理削除済み利用者で404となること
@@ -1746,7 +1746,7 @@ Phase1では、
 
 HTTPリクエストを受け付け、
 入力値および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの入力値を受け取り、
@@ -1849,7 +1849,7 @@ final readonly class CreateObjectiveInput
 
 ```php
 $exists = Objective::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where('name', $input->name)
     ->exists();
 ```
@@ -1887,7 +1887,7 @@ $exists = Objective::query()
 
 ```php
 return Objective::create([
-    'user_id' => $demoUserId,
+    'user_id' => $userId,
     'name' => $input->name,
     'planned_year_month' => $input->plannedYearMonth,
     'required_expense' => $input->requiredExpense,
@@ -1910,16 +1910,16 @@ return Objective::create([
 
 ```php
 $objective = DB::transaction(
-    function () use ($demoUserId, $input): Objective {
+    function () use ($userId, $input): Objective {
         if ($this->query->existsByUserAndName(
-            $demoUserId,
+            $userId,
             $input->name,
         )) {
             throw new ObjectiveAlreadyExistsException();
         }
 
         return $this->repository->create(
-            $demoUserId,
+            $userId,
             $input,
         );
     },
@@ -1995,14 +1995,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -2020,9 +2020,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 目的名重複 | `OBJECTIVE_ALREADY_EXISTS` |
 | 入力値不正 | `VALIDATION_ERROR` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
@@ -2208,8 +2208,8 @@ memo:
 |---|---|
 | `VALIDATION_ERROR` | 入力欄へエラー表示 |
 | `OBJECTIVE_ALREADY_EXISTS` | 「同じ目的名が登録されています」を表示 |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示 |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `INVALID_USER_ID` | 共通エラー表示 |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示 |
 
 ---
@@ -2232,7 +2232,7 @@ memo:
 ### 27.2 userIdを受け付けない理由
 
 操作対象利用者は、
-デモ利用者コンテキストから決定する。
+利用者コンテキストから決定する。
 
 他利用者への登録を防止するため、
 `userId`はリクエストで受け付けない。
@@ -2335,7 +2335,7 @@ Idempotency-Keyは採用しない。
 
 ## 1. 概要
 
-操作対象となるデモ利用者の
+操作対象となる利用者の
 指定した目的の詳細情報を取得する。
 
 取得した目的は、
@@ -2390,12 +2390,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された
@@ -2443,7 +2443,7 @@ GET /api/v1/objectives/1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例
@@ -2451,7 +2451,7 @@ GET /api/v1/objectives/1
 ```http
 GET /api/v1/objectives/1
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -2473,14 +2473,14 @@ X-Demo-User-Id: 1
 パスパラメータで指定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ---
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -2558,7 +2558,7 @@ AND user_id = 操作対象利用者ID
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 目的ID検証
     ↓
@@ -2671,13 +2671,13 @@ API共通方針で定めた
 ### 18.2 利用者が存在しない場合
 
 指定された利用者が存在しない場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -2689,19 +2689,19 @@ API共通方針で定めた
 
 ### 18.3 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -2768,10 +2768,10 @@ API共通方針で定めたID形式に一致しない場合は、
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
 | `INVALID_OBJECTIVE_ID` | 400 | 目的IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 指定した目的が存在しない、または操作対象利用者に属していない | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
 
@@ -2881,7 +2881,7 @@ HTTP GETを使用する。
 
 ### 24.5 ヘッダー
 
-- `X-Demo-User-Id`未指定で`400 Bad Request`となること
+- `X-User-Id`未指定で`400 Bad Request`となること
 - 利用者ID形式不正で`400 Bad Request`となること
 - 存在しない利用者IDで`404 Not Found`となること
 - 論理削除済み利用者で`404 Not Found`となること
@@ -2919,7 +2919,7 @@ HTTP GETを使用する。
 
 HTTPリクエストを受け付け、
 目的IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 目的詳細取得UseCaseを呼び出し、
 取得結果をResponderへ渡す。
@@ -2992,7 +2992,7 @@ Queryで行う。
 ```php
 $objective = Objective::query()
     ->where('id', $objectiveId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -3101,14 +3101,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id` を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id` を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -3124,9 +3124,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 目的ID形式不正 | `INVALID_OBJECTIVE_ID` |
 | 目的不存在 | `OBJECTIVE_NOT_FOUND` |
 | 論理削除済み目的 | `OBJECTIVE_NOT_FOUND` |
@@ -3321,8 +3321,8 @@ const memo = objective.memo ?? '';
 |---|---|
 | `INVALID_OBJECTIVE_ID` | 不正なURLとしてエラー表示する |
 | `OBJECTIVE_NOT_FOUND` | 目的一覧画面へ戻し、対象が存在しないことを表示する |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
 
 `OBJECTIVE_NOT_FOUND`の場合は、
@@ -3486,7 +3486,7 @@ Phase1ではキャッシュを採用しない。
 
 ## 1. 概要
 
-操作対象となるデモ利用者に登録された
+操作対象となる利用者に登録された
 有効な目的を更新する。
 
 本APIでは、
@@ -3555,10 +3555,10 @@ PATCH /api/v1/objectives/{objectiveId}
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id` リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id` リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された目的のみ更新できる。
@@ -3604,7 +3604,7 @@ PATCH /api/v1/objectives/1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -3614,7 +3614,7 @@ PATCH /api/v1/objectives/1
 PATCH /api/v1/objectives/1
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -3693,7 +3693,7 @@ X-Demo-User-Id: 1
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -3960,10 +3960,10 @@ API共通方針で定めた
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
 | `INVALID_OBJECTIVE_ID` | 400 | 目的IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 指定された目的が存在しない、または操作対象利用者に属していない | × |
 | `OBJECTIVE_ALREADY_EXISTS` | 409 | 同一利用者で目的名が重複している | × |
 | `OBJECTIVE_DISABLED` | 422 | 無効化された目的を更新しようとした | × |
@@ -4198,7 +4198,7 @@ ETagやIf-Matchによる楽観ロックは採用しない。
 HTTPリクエストを受け付け、
 目的ID、
 更新内容および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの更新内容を受け取り、
@@ -4347,7 +4347,7 @@ PATCHでは、
 ```php
 $objective = Objective::query()
     ->where('id', $objectiveId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -4367,7 +4367,7 @@ LaravelのSoftDeletesを利用する場合、通常のEloquentクエリでは論
 
 ```php
 $exists = Objective::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where('name', $newName)
     ->whereKeyNot($objectiveId)
     ->exists();
@@ -4446,12 +4446,12 @@ return $objective;
 ```php
 $objective = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $objectiveId,
         $input,
     ): Objective {
         $objective = $this->query->findByUserAndId(
-            $demoUserId,
+            $userId,
             $objectiveId,
         );
 
@@ -4466,7 +4466,7 @@ $objective = DB::transaction(
         if (
             $input->hasName
             && $this->query->existsByUserAndNameExcludingId(
-                $demoUserId,
+                $userId,
                 $input->name,
                 $objectiveId,
             )
@@ -4541,13 +4541,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id` を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id` を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -4559,9 +4559,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 目的ID形式不正 | `INVALID_OBJECTIVE_ID` |
 | 目的不存在 | `OBJECTIVE_NOT_FOUND` |
 | 論理削除済み目的 | `OBJECTIVE_NOT_FOUND` |
@@ -4755,8 +4755,8 @@ requiredExpense:
 | `OBJECTIVE_DISABLED` | 「無効化された目的は更新できません」を表示 |
 | `OBJECTIVE_NOT_FOUND` | 一覧画面へ戻し、対象が存在しないことを表示する |
 | `INVALID_OBJECTIVE_ID` | 不正なURLとしてエラー表示する |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示 |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `INVALID_USER_ID` | 共通エラー表示 |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示 |
 
 ---
@@ -4871,7 +4871,7 @@ Phase1では
 
 ## 1. 概要
 
-操作対象となるデモ利用者に登録された
+操作対象となる利用者に登録された
 有効な目的を無効化する。
 
 本APIでは、
@@ -4937,12 +4937,12 @@ PATCH
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された
@@ -5005,7 +5005,7 @@ PATCH /api/v1/objectives/1/disable
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -5015,7 +5015,7 @@ PATCH /api/v1/objectives/1/disable
 PATCH /api/v1/objectives/1/disable
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -5037,14 +5037,14 @@ X-Demo-User-Id: 1
 パスパラメータで指定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ---
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -5148,7 +5148,7 @@ AND user_id = 操作対象利用者ID
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 目的ID検証
     ↓
@@ -5297,13 +5297,13 @@ API共通方針で定めた
 ### 18.3 利用者が存在しない場合
 
 指定された利用者が存在しない場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -5315,19 +5315,19 @@ API共通方針で定めた
 
 ### 18.4 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -5405,10 +5405,10 @@ API共通方針で定めたID形式に一致しない場合は、
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
 | `INVALID_OBJECTIVE_ID` | 400 | 目的IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 指定された目的が存在しない、または操作対象利用者に属していない | × |
 | `OBJECTIVE_DISABLED` | 422 | 指定された目的がすでに無効化されている | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -5605,7 +5605,7 @@ Idempotency-Keyも採用しない。
 
 HTTPリクエストを受け付け、
 目的IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 目的無効化UseCaseを呼び出し、
 処理結果をResponderへ渡す。
@@ -5687,7 +5687,7 @@ UseCaseおよびQueryで行う。
 ```php
 $objective = Objective::query()
     ->where('id', $objectiveId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -5751,11 +5751,11 @@ return $objective;
 ```php
 $objective = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $objectiveId,
     ): Objective {
         $objective = $this->query->findByUserAndId(
-            $demoUserId,
+            $userId,
             $objectiveId,
         );
 
@@ -5791,7 +5791,7 @@ Phase1では、明示的な行ロックおよび楽観ロックは採用しな�
 ```php
 $updatedCount = Objective::query()
     ->where('id', $objectiveId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where('enabled', true)
     ->update([
         'enabled' => false,
@@ -5865,13 +5865,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id` を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id` を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -5883,9 +5883,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 目的ID形式不正 | `INVALID_OBJECTIVE_ID` |
 | 目的不存在 | `OBJECTIVE_NOT_FOUND` |
 | 論理削除済み目的 | `OBJECTIVE_NOT_FOUND` |
@@ -6059,8 +6059,8 @@ Phase1では、冪等性キーは使用しない。
 | `INVALID_OBJECTIVE_ID` | 不正なURLとしてエラー表示する |
 | `OBJECTIVE_NOT_FOUND` | 目的一覧画面へ戻し、対象が存在しないことを表示する |
 | `OBJECTIVE_DISABLED` | すでに無効化済みであることを表示する |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
 
 ---
@@ -6182,7 +6182,7 @@ Laravelの `delete()` を使用すると `deleted_at` が更新され、通常AP
 
 ## 1. 概要
 
-操作対象となるデモ利用者に帰属する目的について、
+操作対象となる利用者に帰属する目的について、
 指定した判定対象年月時点での目的達成可否を判定する。
 
 判定では、
@@ -6251,12 +6251,12 @@ POST /api/v1/objectives/{objectiveId}/assessments
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に帰属する
@@ -6301,7 +6301,7 @@ X-Demo-User-Id: 1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json` を指定する |
 | `Accept` | ○ | `application/json` を指定する |
 
@@ -6311,7 +6311,7 @@ X-Demo-User-Id: 1
 POST /api/v1/objectives/15/assessments
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -6387,7 +6387,7 @@ X-Demo-User-Id: 1
 
 ## 12. バリデーション
 
-### 12.1 X-Demo-User-Id
+### 12.1 X-User-Id
 
 以下を検証する。
 
@@ -6500,7 +6500,7 @@ X-Demo-User-Id: 1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json` を指定する |
 | `Accept` | ○ | `application/json` を指定する |
 
@@ -6510,7 +6510,7 @@ X-Demo-User-Id: 1
 POST /api/v1/objectives/15/assessments
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -6586,7 +6586,7 @@ X-Demo-User-Id: 1
 
 ## 12. バリデーション
 
-### 12.1 X-Demo-User-Id
+### 12.1 X-User-Id
 
 以下を検証する。
 
@@ -6730,7 +6730,7 @@ X-Demo-User-Id: 1
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者の特定
     ↓
@@ -7051,10 +7051,10 @@ API共通方針で定めた共通エラーレスポンス形式を使用する�
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id` が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id` が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
 | `INVALID_OBJECTIVE_ID` | 400 | 目的IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 指定された目的が存在しない、または操作対象利用者に属していない | × |
 | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 判定に使用できる確定済み月末資産状況が存在しない | ○ |
 | `OBJECTIVE_DISABLED` | 422 | 無効化された目的を判定しようとした | × |
@@ -7477,7 +7477,7 @@ Phase1で厳密なスナップショット分離を保証しない場合は、�
 
 ### 27.1 Action
 
-HTTPリクエストを受け付け、目的ID、判定対象年月、翌月クレジットカード支払予定額およびデモ利用者コンテキストを取得する。
+HTTPリクエストを受け付け、目的ID、判定対象年月、翌月クレジットカード支払予定額および利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから検証済みの入力値を受け取り、目的達成判定UseCaseを呼び出す。
 
@@ -7579,7 +7579,7 @@ final readonly class AssessObjectiveInput
 ```php
 $objective = Objective::query()
     ->where('id', $objectiveId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -7642,13 +7642,13 @@ $result = $assessmentService->assess(
 ```php
 $result = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $objectiveId,
         $input,
     ) {
         $result =
             $this->useCase->execute(
-                $demoUserId,
+                $userId,
                 $objectiveId,
                 $input,
             );
@@ -7709,7 +7709,7 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSON共通処理
 - 共通例外処理
@@ -7725,9 +7725,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 目的ID形式不正 | `INVALID_OBJECTIVE_ID` |
 | 目的不存在 | `OBJECTIVE_NOT_FOUND` |
 | 無効化済み目的 | `OBJECTIVE_DISABLED` |

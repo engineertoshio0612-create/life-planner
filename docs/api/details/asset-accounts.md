@@ -6,7 +6,7 @@
 資産口座APIに関する詳細仕様を定義する。
 
 資産口座APIでは、
-操作対象となるデモ利用者に帰属する資産口座の
+操作対象となる利用者に帰属する資産口座の
 取得、登録、更新および利用可能資産設定の管理を行う。
 
 ---
@@ -28,7 +28,7 @@
 
 ## 1. 概要
 
-操作対象となるデモ利用者に帰属する
+操作対象となる利用者に帰属する
 資産口座の一覧を取得する。
 
 利用中の資産口座だけでなく、
@@ -84,11 +84,11 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、
+`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に帰属する
@@ -130,7 +130,7 @@ Phase1では、
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -138,12 +138,12 @@ Phase1では、
 ```http
 GET /api/v1/asset-accounts
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
-### 8.2 X-Demo-User-Id
+### 8.2 X-User-Id
 
-`X-Demo-User-Id`は、
+`X-User-Id`は、
 API共通方針に従って検証する。
 
 本APIの処理開始前に、
@@ -168,8 +168,8 @@ API共通方針に従って検証する。
 
 以下を検証する。
 
-- `X-Demo-User-Id`が指定されていること
-- `X-Demo-User-Id`がIDの共通形式に一致すること
+- `X-User-Id`が指定されていること
+- `X-User-Id`がIDの共通形式に一致すること
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
@@ -255,7 +255,7 @@ Phase1では、
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者の特定
     ↓
@@ -480,7 +480,7 @@ API共通方針で定めた
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者が指定されていません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -496,7 +496,7 @@ API共通方針で定めた
 |---:|---|
 | `200 OK` | 資産口座一覧の取得に成功した |
 | `400 Bad Request` | 利用者IDの指定がない、または形式が不正である |
-| `404 Not Found` | 指定されたデモ利用者が存在しない |
+| `404 Not Found` | 指定された利用者が存在しない |
 | `500 Internal Server Error` | 想定外のサーバーエラー、またはデータ不整合が発生した |
 
 資産口座が0件の場合は、
@@ -508,9 +508,9 @@ API共通方針で定めた
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | `X-Demo-User-Id`の形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定されたデモ利用者が存在しない | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | `X-User-Id`の形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `AVAILABLE_SETTING_NOT_FOUND` | 500 | 対象年月に有効な利用可能資産設定が存在しない | × |
 | `AVAILABLE_SETTING_PERIOD_CONFLICT` | 500 | 対象年月に複数の利用可能資産設定が適用されている | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -636,8 +636,8 @@ API実行時の対象年月に有効な
 
 ### 27.6 ヘッダー
 
-- `X-Demo-User-Id`が指定されていない場合にエラーとなること
-- `X-Demo-User-Id`の形式が不正な場合にエラーとなること
+- `X-User-Id`が指定されていない場合にエラーとなること
+- `X-User-Id`の形式が不正な場合にエラーとなること
 - 存在しない利用者IDの場合にエラーとなること
 - 論理削除済み利用者IDの場合にエラーとなること
 
@@ -706,7 +706,7 @@ Laravel SoftDeletesを使用する場合は、
 ```php
 AssetAccount::query()
     ->withTrashed()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->with('availableSettings')
     ->orderByRaw('deleted_at IS NULL DESC')
     ->orderBy('name')
@@ -770,14 +770,14 @@ Responderから利用する。
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキストは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキストは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 存在しない利用者、

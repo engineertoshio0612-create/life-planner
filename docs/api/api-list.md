@@ -37,7 +37,7 @@ Phase1で提供するAPIの一覧を定義する。
 原則として以下のリクエストヘッダーを使用する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -70,7 +70,7 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| USR-001 | 利用者 | デモ利用者一覧取得 | GET | `/api/v1/users` | 選択可能なデモ利用者の一覧を取得する | `users` | 3. 利用者 | [USR-001](./details/users.md#usr-001-デモ利用者一覧取得) |
+| USR-001 | 利用者 | 利用者一覧取得 | GET | `/api/v1/users` | 選択可能な利用者の一覧を取得する | `users` | 3. 利用者 | [USR-001](./details/users.md#usr-001-利用者一覧取得) |
 
 ---
 
@@ -90,13 +90,12 @@ API詳細設計書、
 ## 6. 保有商品API
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
-|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HLD-001 | 保有商品 | 保有商品一覧取得 | GET | `/api/v1/holding-assets` | 操作対象利用者の保有商品一覧を取得する | `holding_assets`、`asset_accounts` | 5.8 一覧表示、5.9 表示順 | [HLD-001](./details/holding-assets.md#has-001-保有商品一覧取得) |
 | HLD-002 | 保有商品 | 保有商品登録 | POST | `/api/v1/holding-assets` | 商品単位で管理する資産口座へ保有商品を登録する | `holding_assets`、`asset_accounts` | 5.2 登録 | [HLD-002](./details/holding-assets.md#has-002-保有商品登録) |
 | HLD-003 | 保有商品 | 保有商品詳細取得 | GET | `/api/v1/holding-assets/{holdingAssetId}` | 指定した保有商品の詳細を取得する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-003](./details/holding-assets.md#has-003-保有商品詳細取得) |
 | HLD-004 | 保有商品 | 保有商品更新 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品名、商品種別および備考を更新する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-004](./details/holding-assets.md#has-004-保有商品更新) |
-| HLD-005 | 保有商品 | 保有商品無効化 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品を無効化する | `holding_assets` | 5.7 無効化 | [HLD-005](./details/holding-assets.md#has-005-保有商品無効化) |
-
+| HLD-005 | 保有商品 | 保有商品無効化 | PATCH | `/api/v1/holding-assets/{holdingAssetId}/disable` | 指定した保有商品を無効化する | `holding_assets` | 5.7 無効化 | [HLD-005](./details/holding-assets.md#has-005-保有商品無効化) |
 ---
 
 ## 7. 手取り収入API
@@ -237,8 +236,8 @@ Phase1では、
 
 利用者切替専用APIは提供しない。
 
-フロントエンドが選択中のデモ利用者IDを保持し、
-利用者依存APIへ`X-Demo-User-Id`を付与する。
+フロントエンドが選択中の利用者IDを保持し、
+利用者依存APIへ`X-User-Id`を付与する。
 
 ### 17.2 無効化
 

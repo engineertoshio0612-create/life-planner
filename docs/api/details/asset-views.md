@@ -7,7 +7,7 @@
 APIの詳細仕様を定義する。
 
 資産状況・資産推移APIでは、
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 確定済みの月末資産状況をもとに、
 総資産、
 資産口座別資産、
@@ -86,8 +86,8 @@ month_end_holding_values.value
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 本API群では、
@@ -242,7 +242,7 @@ AST-003は
 
 ### 3.1 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 最新の確定済み対象年月における
 現在の資産状況を取得する。
 
@@ -380,12 +380,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIでは、
@@ -399,7 +399,7 @@ X-Demo-User-Id: 1
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
 最新の確定済み
 月末資産状況を取得する際は、
@@ -427,7 +427,7 @@ month_end_asset_snapshots.confirmed
 以下の順序で対象を特定する。
 
 ```text
-X-Demo-User-Id
+X-User-Id
     ↓
 操作対象利用者
     ↓
@@ -528,7 +528,7 @@ asset_account_available_settings
 を資産状況の算出へ
 含めてはならない。
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合、
 形式が不正な場合、
 または指定された利用者が
@@ -602,7 +602,7 @@ AST-002 指定年月資産状況取得APIを使用する。
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -610,7 +610,7 @@ AST-002 指定年月資産状況取得APIを使用する。
 ```http
 GET /api/v1/asset-summaries/current
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIはGETのため、
@@ -641,7 +641,7 @@ X-Demo-User-Id: 1
 業務項目を持たない。
 
 利用者IDは、
-`X-Demo-User-Id`から取得する。
+`X-User-Id`から取得する。
 
 現在資産状況の取得に使用する
 以下の情報は、
@@ -698,9 +698,9 @@ X-Demo-User-Id: 1
 
 ---
 
-#### 3.11.4 X-Demo-User-Id
+#### 3.11.4 X-User-Id
 
-`X-Demo-User-Id`について、
+`X-User-Id`について、
 以下を検証する。
 
 - 指定されていること
@@ -712,7 +712,7 @@ X-Demo-User-Id: 1
 正常例：
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 不正例：
@@ -725,11 +725,11 @@ abc
 1.5
 ```
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
 
 ```text
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 として扱う。
@@ -737,7 +737,7 @@ DEMO_USER_CONTEXT_REQUIRED
 形式が不正な場合は、
 
 ```text
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 として扱う。
@@ -747,7 +747,7 @@ INVALID_DEMO_USER_ID
 または論理削除されている場合は、
 
 ```text
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 として扱う。
@@ -1898,9 +1898,9 @@ month_end_holding_values.value
 
 | HTTPステータス | エラーコード | 発生条件 |
 |---|---|---|
-| `400 Bad Request` | `DEMO_USER_CONTEXT_REQUIRED` | `X-Demo-User-Id`が指定されていない |
-| `400 Bad Request` | `INVALID_DEMO_USER_ID` | `X-Demo-User-Id`の形式が不正 |
-| `404 Not Found` | `DEMO_USER_NOT_FOUND` | 指定されたデモ利用者が存在しない、または論理削除されている |
+| `400 Bad Request` | `USER_CONTEXT_REQUIRED` | `X-User-Id`が指定されていない |
+| `400 Bad Request` | `INVALID_USER_ID` | `X-User-Id`の形式が不正 |
+| `404 Not Found` | `USER_NOT_FOUND` | 指定された利用者が存在しない、または論理削除されている |
 | `404 Not Found` | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` | 操作対象利用者に確定済み月末資産状況が存在しない |
 | `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | 想定外のサーバーエラーが発生した |
 
@@ -1922,13 +1922,13 @@ API共通方針に従う。
 
 ---
 
-#### 3.17.1 DEMO_USER_CONTEXT_REQUIRED
+#### 3.17.1 USER_CONTEXT_REQUIRED
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
 
 ```text
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 を返却する。
@@ -1938,14 +1938,14 @@ DEMO_USER_CONTEXT_REQUIRED
 
 ---
 
-#### 3.17.2 INVALID_DEMO_USER_ID
+#### 3.17.2 INVALID_USER_ID
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定める
 利用者ID形式を満たさない場合は、
 
 ```text
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 を返却する。
@@ -1962,15 +1962,15 @@ abc
 
 ---
 
-#### 3.17.3 DEMO_USER_NOT_FOUND
+#### 3.17.3 USER_NOT_FOUND
 
-`X-Demo-User-Id`で
+`X-User-Id`で
 指定された利用者が
 存在しない場合、
 または論理削除されている場合は、
 
 ```text
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 を返却する。
@@ -2126,8 +2126,8 @@ HTTPステータスは、
 | HTTPステータス | 用途 |
 |---|---|
 | `200 OK` | 現在資産状況の取得成功 |
-| `400 Bad Request` | デモ利用者コンテキストの指定不備 |
-| `404 Not Found` | デモ利用者または取得対象となる確定済み月末資産状況が存在しない |
+| `400 Bad Request` | 利用者コンテキストの指定不備 |
+| `404 Not Found` | 利用者または取得対象となる確定済み月末資産状況が存在しない |
 | `500 Internal Server Error` | 想定外のサーバーエラー |
 
 本APIでは、
@@ -2581,7 +2581,7 @@ AST-001の対象年月に対応する
 
 #### 3.24.7 users
 
-`X-Demo-User-Id`で指定された
+`X-User-Id`で指定された
 操作対象利用者の
 存在確認に使用する。
 
@@ -2589,7 +2589,7 @@ AST-001の対象年月に対応する
 以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -3114,7 +3114,7 @@ confirmed = true
 ```
 
 User Aを
-`X-Demo-User-Id`として
+`X-User-Id`として
 AST-001を実行する。
 
 期待結果：
@@ -3178,14 +3178,14 @@ AST-001を実行する。
 
 #### 3.26.24 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずに実行する。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 ---
@@ -3193,19 +3193,19 @@ DEMO_USER_CONTEXT_REQUIRED
 #### 3.26.25 利用者ID形式不正
 
 不正な
-`X-Demo-User-Id`を指定する。
+`X-User-Id`を指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 ---
@@ -3213,13 +3213,13 @@ INVALID_DEMO_USER_ID
 #### 3.26.26 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -3227,13 +3227,13 @@ DEMO_USER_NOT_FOUND
 #### 3.26.27 論理削除済み利用者
 
 論理削除済み利用者を
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -3446,7 +3446,7 @@ Actionへ、最新対象年月の判定、資産集計、利用可能資産判�
 
 #### 3.27.1 Action
 
-HTTPリクエストを受け付け、デモ利用者コンテキストから操作対象利用者IDを取得する。
+HTTPリクエストを受け付け、利用者コンテキストから操作対象利用者IDを取得する。
 
 現在資産状況取得UseCaseを呼び出し、取得結果をResponderへ渡す。
 
@@ -3458,10 +3458,10 @@ final class GetCurrentAssetSummaryAction
     public function __invoke(
         GetCurrentAssetSummaryUseCase $useCase,
         CurrentAssetSummaryResponder $responder,
-        DemoUserContext $demoUserContext,
+        userContext $userContext,
     ): JsonResponse {
         $summary = $useCase->execute(
-            userId: $demoUserContext->userId,
+            userId: $userContext->userId,
         );
 
         return $responder->ok(
@@ -3497,7 +3497,7 @@ Actionでは、以下を行わない。
 
 そのため、AST-001専用のFormRequestは作成しない。
 
-`X-Demo-User-Id`の検証および操作対象利用者コンテキストの生成は、API共通Middlewareで行う。
+`X-User-Id`の検証および操作対象利用者コンテキストの生成は、API共通Middlewareで行う。
 
 以下のような空のRequestクラスは作成しない。
 
@@ -4325,13 +4325,13 @@ Responderは、取得済みのAssetSummaryをHTTPレスポンスへ変換する�
 
 以下の共通Middlewareを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONレスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定Middlewareでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -4476,9 +4476,9 @@ Laravel内部例外をそのままAPIレスポンスへ公開しない。
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 確定済み月末資産状況不存在 | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
 
@@ -5010,7 +5010,7 @@ export const assetSummaryKeys = {
 ```
 
 操作対象利用者は、
-`X-Demo-User-Id`によって
+`X-User-Id`によって
 API Clientまたは
 共通Contextから付与する。
 
@@ -5180,14 +5180,14 @@ totalAssets = 0
 
 ---
 
-#### 3.28.19 DEMO_USER_NOT_FOUND
+#### 3.28.19 USER_NOT_FOUND
 
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 が返却された場合は、
 操作対象利用者を
 現在利用できない状態として扱う。
 
-デモ利用者選択画面へ戻すなど、
+利用者選択画面へ戻すなど、
 API共通方針に従って処理する。
 
 ---
@@ -5200,9 +5200,9 @@ API共通方針に従って処理する。
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` | 確定済み月末資産状況がないことを表示する |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
 
@@ -5796,7 +5796,7 @@ Phase1では、
 
 ### 4.1 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定された対象年月における
 資産状況を取得する。
 
@@ -5963,12 +5963,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIでは、
@@ -5983,7 +5983,7 @@ X-Demo-User-Id: 1
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
 指定年月の月末資産状況を取得する際は、
 必ず以下の条件によって
@@ -6119,7 +6119,7 @@ asset_accounts.user_id
 を資産状況の算出へ
 含めてはならない。
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合、
 形式が不正な場合、
 または指定された利用者が
@@ -6197,7 +6197,7 @@ GET /api/v1/asset-summaries/2026-05
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -6205,7 +6205,7 @@ GET /api/v1/asset-summaries/2026-05
 ```http
 GET /api/v1/asset-summaries/2026-05
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIはGETのため、
@@ -6224,7 +6224,7 @@ X-Demo-User-Id: 1
 算出するために必要な情報は、
 
 - `targetYearMonth`
-- `X-Demo-User-Id`
+- `X-User-Id`
 
 をもとに
 サーバー側で取得する。
@@ -6248,7 +6248,7 @@ X-Demo-User-Id: 1
 | 項目 | 取得元 | 型 | 必須 | 説明 |
 |---|---|---|:---:|---|
 | `targetYearMonth` | パスパラメータ | string | ○ | 資産状況を取得する対象年月 |
-| `X-Demo-User-Id` | リクエストヘッダー | string | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | リクエストヘッダー | string | ○ | 操作対象となる利用者ID |
 
 以下の情報は、
 クライアントから受け付けない。
@@ -6466,9 +6466,9 @@ GET /api/v1/asset-summaries/2026-06
 
 ---
 
-#### 4.11.6 X-Demo-User-Id
+#### 4.11.6 X-User-Id
 
-`X-Demo-User-Id`について、
+`X-User-Id`について、
 以下を検証する。
 
 - 指定されていること
@@ -6480,7 +6480,7 @@ GET /api/v1/asset-summaries/2026-06
 正常例：
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 不正例：
@@ -6493,11 +6493,11 @@ abc
 1.5
 ```
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
 
 ```text
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 として扱う。
@@ -6505,7 +6505,7 @@ DEMO_USER_CONTEXT_REQUIRED
 形式が不正な場合は、
 
 ```text
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 として扱う。
@@ -6515,7 +6515,7 @@ INVALID_DEMO_USER_ID
 または論理削除されている場合は、
 
 ```text
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 として扱う。
@@ -7681,9 +7681,9 @@ month_end_holding_values.value
 
 | HTTPステータス | エラーコード | 発生条件 |
 |---|---|---|
-| `400 Bad Request` | `DEMO_USER_CONTEXT_REQUIRED` | `X-Demo-User-Id`が指定されていない |
-| `400 Bad Request` | `INVALID_DEMO_USER_ID` | `X-Demo-User-Id`の形式が不正 |
-| `404 Not Found` | `DEMO_USER_NOT_FOUND` | 指定されたデモ利用者が存在しない、または論理削除されている |
+| `400 Bad Request` | `USER_CONTEXT_REQUIRED` | `X-User-Id`が指定されていない |
+| `400 Bad Request` | `INVALID_USER_ID` | `X-User-Id`の形式が不正 |
+| `404 Not Found` | `USER_NOT_FOUND` | 指定された利用者が存在しない、または論理削除されている |
 | `404 Not Found` | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` | 指定年月について、操作対象利用者に属する確定済み月末資産状況が存在しない |
 | `422 Unprocessable Entity` | `VALIDATION_ERROR` | `targetYearMonth`の形式が不正 |
 | `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | 想定外のサーバーエラーが発生した |
@@ -7706,13 +7706,13 @@ API共通方針に従う。
 
 ---
 
-#### 4.17.1 DEMO_USER_CONTEXT_REQUIRED
+#### 4.17.1 USER_CONTEXT_REQUIRED
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
 
 ```text
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 を返却する。
@@ -7722,14 +7722,14 @@ DEMO_USER_CONTEXT_REQUIRED
 
 ---
 
-#### 4.17.2 INVALID_DEMO_USER_ID
+#### 4.17.2 INVALID_USER_ID
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定める
 利用者ID形式を満たさない場合は、
 
 ```text
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 を返却する。
@@ -7746,15 +7746,15 @@ abc
 
 ---
 
-#### 4.17.3 DEMO_USER_NOT_FOUND
+#### 4.17.3 USER_NOT_FOUND
 
-`X-Demo-User-Id`で
+`X-User-Id`で
 指定された利用者が
 存在しない場合、
 または論理削除されている場合は、
 
 ```text
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 を返却する。
@@ -8019,8 +8019,8 @@ HTTPステータスは、
 | HTTPステータス | 用途 |
 |---|---|
 | `200 OK` | 指定年月資産状況の取得成功 |
-| `400 Bad Request` | デモ利用者コンテキストの指定不備 |
-| `404 Not Found` | デモ利用者、または指定年月の確定済み月末資産状況が存在しない |
+| `400 Bad Request` | 利用者コンテキストの指定不備 |
+| `404 Not Found` | 利用者、または指定年月の確定済み月末資産状況が存在しない |
 | `422 Unprocessable Entity` | `targetYearMonth`のバリデーションエラー |
 | `500 Internal Server Error` | 想定外のサーバーエラー |
 
@@ -8054,8 +8054,8 @@ HTTPステータスは、
 
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正
 
 ---
 
@@ -8515,7 +8515,7 @@ targetYearMonth
 
 #### 4.24.7 users
 
-`X-Demo-User-Id`で指定された
+`X-User-Id`で指定された
 操作対象利用者の
 存在確認に使用する。
 
@@ -8523,7 +8523,7 @@ targetYearMonth
 以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -9211,14 +9211,14 @@ AST-002を実行する。
 
 #### 4.26.29 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずに実行する。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 ---
@@ -9226,19 +9226,19 @@ DEMO_USER_CONTEXT_REQUIRED
 #### 4.26.30 利用者ID形式不正
 
 不正な
-`X-Demo-User-Id`を指定する。
+`X-User-Id`を指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 ---
@@ -9246,13 +9246,13 @@ INVALID_DEMO_USER_ID
 #### 4.26.31 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -9260,13 +9260,13 @@ DEMO_USER_NOT_FOUND
 #### 4.26.32 論理削除済み利用者
 
 論理削除済み利用者を
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -9471,7 +9471,7 @@ Actionへ、指定年月の月末資産状況検索、資産集計、利用可�
 
 #### 4.27.1 Action
 
-HTTPリクエストを受け付け、検証済みの`targetYearMonth`およびデモ利用者コンテキストを取得する。
+HTTPリクエストを受け付け、検証済みの`targetYearMonth`および利用者コンテキストを取得する。
 
 指定年月資産状況取得UseCaseを呼び出し、取得結果をResponderへ渡す。
 
@@ -9484,10 +9484,10 @@ final class GetAssetSummaryByMonthAction
         GetAssetSummaryByMonthRequest $request,
         GetAssetSummaryByMonthUseCase $useCase,
         AssetSummaryByMonthResponder $responder,
-        DemoUserContext $demoUserContext,
+        userContext $userContext,
     ): JsonResponse {
         $summary = $useCase->execute(
-            userId: $demoUserContext->userId,
+            userId: $userContext->userId,
             targetYearMonth:
                 $request->validated(
                     'targetYearMonth',
@@ -10397,13 +10397,13 @@ Responderは、取得済みのAssetSummaryをHTTPレスポンスへ変換する�
 
 以下の共通Middlewareを適用する。
 
-* デモ利用者コンテキスト設定
+* 利用者コンテキスト設定
 * リクエストID生成
 * JSONレスポンス共通処理
 * 共通例外処理
 * ログコンテキスト設定
 
-デモ利用者コンテキスト設定Middlewareでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -10550,9 +10550,9 @@ Laravel内部例外をそのままAPIレスポンスへ公開しない。
 
 | 内部状態                  | 独自エラーコード                             |
 | --------------------- | ------------------------------------ |
-| 利用者未指定                | `DEMO_USER_CONTEXT_REQUIRED`         |
-| 利用者ID形式不正             | `INVALID_DEMO_USER_ID`               |
-| 利用者不存在                | `DEMO_USER_NOT_FOUND`                |
+| 利用者未指定                | `USER_CONTEXT_REQUIRED`         |
+| 利用者ID形式不正             | `INVALID_USER_ID`               |
+| 利用者不存在                | `USER_NOT_FOUND`                |
 | `targetYearMonth`形式不正 | `VALIDATION_ERROR`                   |
 | 指定年月の確定済み月末資産状況不存在    | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` |
 | 想定外例外                 | `INTERNAL_SERVER_ERROR`              |
@@ -11370,9 +11370,9 @@ URL直接入力などに備えて
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正な対象年月またはURLとして扱う |
 | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` | 指定年月に確定済み資産状況がないことを表示する |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
@@ -11830,7 +11830,7 @@ Phase1では
 
 ### 5.1 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定期間内の
 確定済み月末資産状況をもとに、
 資産推移を取得する。
@@ -11992,12 +11992,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIでは、
@@ -12012,7 +12012,7 @@ X-Demo-User-Id: 1
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
 資産推移の対象となる
 月末資産状況を取得する際は、
@@ -12162,7 +12162,7 @@ asset_accounts.user_id
 を資産推移の算出へ
 含めてはならない。
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合、
 形式が不正な場合、
 または指定された利用者が
@@ -12311,7 +12311,7 @@ AST-003では、
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -12319,7 +12319,7 @@ AST-003では、
 ```http
 GET /api/v1/asset-trends?from=2026-01&to=2026-06
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIはGETのため、
@@ -12338,7 +12338,7 @@ X-Demo-User-Id: 1
 
 - `from`
 - `to`
-- `X-Demo-User-Id`
+- `X-User-Id`
 
 から取得する。
 
@@ -12370,7 +12370,7 @@ X-Demo-User-Id: 1
 |---|---|---|:---:|---|
 | `from` | クエリパラメータ | string | ○ | 表示対象期間の開始年月 |
 | `to` | クエリパラメータ | string | ○ | 表示対象期間の終了年月 |
-| `X-Demo-User-Id` | リクエストヘッダー | string | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | リクエストヘッダー | string | ○ | 操作対象となる利用者ID |
 
 以下の情報は、
 クライアントから受け付けない。
@@ -12688,9 +12688,9 @@ availableAssets = 0
 
 ---
 
-#### 5.11.11 X-Demo-User-Id
+#### 5.11.11 X-User-Id
 
-`X-Demo-User-Id`について、
+`X-User-Id`について、
 以下を検証する。
 
 - 指定されていること
@@ -12702,7 +12702,7 @@ availableAssets = 0
 正常例：
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 不正例：
@@ -12715,11 +12715,11 @@ abc
 1.5
 ```
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
 
 ```text
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 として扱う。
@@ -12727,7 +12727,7 @@ DEMO_USER_CONTEXT_REQUIRED
 形式が不正な場合は、
 
 ```text
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 として扱う。
@@ -12737,7 +12737,7 @@ INVALID_DEMO_USER_ID
 または論理削除されている場合は、
 
 ```text
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 として扱う。
@@ -14146,9 +14146,9 @@ stringへ変換する。
 
 | HTTPステータス | エラーコード | 発生条件 |
 |---|---|---|
-| `400 Bad Request` | `DEMO_USER_CONTEXT_REQUIRED` | `X-Demo-User-Id`が指定されていない |
-| `400 Bad Request` | `INVALID_DEMO_USER_ID` | `X-Demo-User-Id`の形式が不正 |
-| `404 Not Found` | `DEMO_USER_NOT_FOUND` | 指定されたデモ利用者が存在しない、または論理削除されている |
+| `400 Bad Request` | `USER_CONTEXT_REQUIRED` | `X-User-Id`が指定されていない |
+| `400 Bad Request` | `INVALID_USER_ID` | `X-User-Id`の形式が不正 |
+| `404 Not Found` | `USER_NOT_FOUND` | 指定された利用者が存在しない、または論理削除されている |
 | `422 Unprocessable Entity` | `VALIDATION_ERROR` | `from`、`to`の形式または前後関係が不正 |
 | `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | 想定外のサーバーエラーが発生した |
 
@@ -14190,13 +14190,13 @@ API共通方針に従う。
 
 ---
 
-#### 5.17.1 DEMO_USER_CONTEXT_REQUIRED
+#### 5.17.1 USER_CONTEXT_REQUIRED
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
 
 ```text
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 を返却する。
@@ -14206,14 +14206,14 @@ DEMO_USER_CONTEXT_REQUIRED
 
 ---
 
-#### 5.17.2 INVALID_DEMO_USER_ID
+#### 5.17.2 INVALID_USER_ID
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定める
 利用者ID形式を満たさない場合は、
 
 ```text
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 を返却する。
@@ -14230,15 +14230,15 @@ abc
 
 ---
 
-#### 5.17.3 DEMO_USER_NOT_FOUND
+#### 5.17.3 USER_NOT_FOUND
 
-`X-Demo-User-Id`で
+`X-User-Id`で
 指定された利用者が
 存在しない場合、
 または論理削除されている場合は、
 
 ```text
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 を返却する。
@@ -14676,8 +14676,8 @@ HTTPステータスは、
 | HTTPステータス | 用途 |
 |---|---|
 | `200 OK` | 資産推移の取得成功 |
-| `400 Bad Request` | デモ利用者コンテキストの指定不備 |
-| `404 Not Found` | 指定されたデモ利用者が存在しない |
+| `400 Bad Request` | 利用者コンテキストの指定不備 |
+| `404 Not Found` | 指定された利用者が存在しない |
 | `422 Unprocessable Entity` | `from`、`to`のバリデーションエラー |
 | `500 Internal Server Error` | 想定外のサーバーエラー |
 
@@ -14715,8 +14715,8 @@ API処理の成否は
 
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正
 
 ---
 
@@ -15258,7 +15258,7 @@ available = false
 
 #### 5.24.7 users
 
-`X-Demo-User-Id`で指定された
+`X-User-Id`で指定された
 操作対象利用者の
 存在確認に使用する。
 
@@ -15266,7 +15266,7 @@ available = false
 以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -16187,14 +16187,14 @@ AST-003を実行する。
 
 #### 5.26.37 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずに実行する。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 ---
@@ -16202,19 +16202,19 @@ DEMO_USER_CONTEXT_REQUIRED
 #### 5.26.38 利用者ID形式不正
 
 不正な
-`X-Demo-User-Id`を指定する。
+`X-User-Id`を指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 ---
@@ -16222,13 +16222,13 @@ INVALID_DEMO_USER_ID
 #### 5.26.39 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -16236,13 +16236,13 @@ DEMO_USER_NOT_FOUND
 #### 5.26.40 論理削除済み利用者
 
 論理削除済み利用者を
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -16545,7 +16545,7 @@ Responderを分離して実装する。
 ```text
 Route
     ↓
-DemoUserContextMiddleware
+userContextMiddleware
     ↓
 FormRequest
     ↓
@@ -16619,7 +16619,7 @@ Actionへ、期間条件の判定、対象年月の抽出、資産集計、利�
 
 #### 5.27.1 Action
 
-HTTPリクエストを受け付け、検証済みの以下の値およびデモ利用者コンテキストを取得する。
+HTTPリクエストを受け付け、検証済みの以下の値および利用者コンテキストを取得する。
 
 - `from`
 - `to`
@@ -16635,10 +16635,10 @@ final class GetAssetTrendAction
         GetAssetTrendRequest $request,
         GetAssetTrendUseCase $useCase,
         AssetTrendResponder $responder,
-        DemoUserContext $demoUserContext,
+        userContext $userContext,
     ): JsonResponse {
         $result = $useCase->execute(
-            userId: $demoUserContext->userId,
+            userId: $userContext->userId,
             from: $request->validated('from'),
             to: $request->validated('to'),
         );
@@ -17713,13 +17713,13 @@ Responderは、生成済みの`AssetTrendResult`をHTTPレスポンスへ変換�
 
 以下の共通Middlewareを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONレスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定Middlewareでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -17881,9 +17881,9 @@ Laravel内部例外をそのままAPIレスポンスへ公開しない。
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | `from`未指定・形式不正 | `VALIDATION_ERROR` |
 | `to`未指定・形式不正 | `VALIDATION_ERROR` |
 | `from > to` | `VALIDATION_ERROR` |
@@ -18917,14 +18917,14 @@ APIエラー処理も実装する。
 
 ---
 
-#### 5.28.27 DEMO_USER_NOT_FOUND
+#### 5.28.27 USER_NOT_FOUND
 
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 が返却された場合は、
 操作対象利用者を
 現在利用できない状態として扱う。
 
-デモ利用者選択画面へ戻すなど、
+利用者選択画面へ戻すなど、
 API共通方針に従って処理する。
 
 ---
@@ -18937,9 +18937,9 @@ API共通方針に従って処理する。
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 期間指定の入力エラーとして扱う |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
 

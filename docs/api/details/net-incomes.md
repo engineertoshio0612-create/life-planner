@@ -42,7 +42,7 @@ Phase1では、
 
 ## 1. 概要
 
-操作対象となるデモ利用者に登録された
+操作対象となる利用者に登録された
 手取り収入一覧を取得する。
 
 手取り収入は、
@@ -101,11 +101,11 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、
+`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された
@@ -140,7 +140,7 @@ API共通方針で定めたデフォルト値を使用する。
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例
@@ -148,7 +148,7 @@ API共通方針で定めたデフォルト値を使用する。
 ```http
 GET /api/v1/net-incomes?page=1&perPage=20&order=desc
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -200,7 +200,7 @@ API共通方針に従う。
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -347,7 +347,7 @@ API共通方針に従う。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者の特定
     ↓
@@ -466,9 +466,9 @@ API共通方針で定めた
 
 | エラーコード | HTTP | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | X-Demo-User-Id未指定 | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者ID形式不正 | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 利用者不存在 | × |
+| `USER_CONTEXT_REQUIRED` | 400 | X-User-Id未指定 | × |
+| `INVALID_USER_ID` | 400 | 利用者ID形式不正 | × |
+| `USER_NOT_FOUND` | 404 | 利用者不存在 | × |
 | `INVALID_SORT_ORDER` | 400 | 並び順指定が不正 | × |
 | `VALIDATION_ERROR` | 422 | 入力値が不正 | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外エラー | ○ |
@@ -587,8 +587,8 @@ GETメソッドの性質に従い、
 
 ### 24.7 ヘッダー
 
-- `X-Demo-User-Id`未指定でエラーとなること
-- `X-Demo-User-Id`形式不正でエラーとなること
+- `X-User-Id`未指定でエラーとなること
+- `X-User-Id`形式不正でエラーとなること
 - 存在しない利用者IDでエラーとなること
 - 論理削除済み利用者でエラーとなること
 
@@ -621,7 +621,7 @@ GETメソッドの性質に従い、
 HTTPリクエストを受け付け、
 ページネーション条件、
 並び順および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOを利用して
 クエリパラメータを受け取り、
@@ -681,7 +681,7 @@ Actionへ直接記述しない。
   - `desc`
 
 操作対象利用者の存在確認は、
-デモ利用者コンテキスト設定ミドルウェアで行う。
+利用者コンテキスト設定ミドルウェアで行う。
 
 ---
 
@@ -695,7 +695,7 @@ Actionへ直接記述しない。
 
 ```php
 NetIncome::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->orderBy(
         'target_year_month',
         $order,
@@ -765,13 +765,13 @@ API Resourceは、Responderから利用する。
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id` を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id` を検証し、操作対象利用者を特定する。
 
 ---
 
@@ -942,7 +942,7 @@ amountが0
 
 ## 1. 概要
 
-操作対象となるデモ利用者に対して、
+操作対象となる利用者に対して、
 対象年月の手取り収入を新規登録する。
 
 手取り収入は、
@@ -997,10 +997,10 @@ POST /api/v1/net-incomes
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id` リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id` リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者の手取り収入として登録する。
@@ -1027,7 +1027,7 @@ X-Demo-User-Id: 1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json` を指定する |
 | `Accept` | ○ | `application/json` を指定する |
 
@@ -1037,7 +1037,7 @@ X-Demo-User-Id: 1
 POST /api/v1/net-incomes
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -1128,7 +1128,7 @@ X-Demo-User-Id: 1
 - `updatedAt`
 - `deletedAt`
 
-利用者IDは、`X-Demo-User-Id` から取得する。
+利用者IDは、`X-User-Id` から取得する。
 
 更新対象外項目が含まれている場合は、バリデーションエラーとする。
 
@@ -1136,7 +1136,7 @@ X-Demo-User-Id: 1
 
 ## 12. バリデーション
 
-### 12.1 X-Demo-User-Id
+### 12.1 X-User-Id
 
 以下を検証する。
 
@@ -1237,7 +1237,7 @@ X-Demo-User-Id: 1
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 入力値検証
     ↓
@@ -1350,9 +1350,9 @@ API共通方針で定めた
 
 | エラーコード | HTTP | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | X-Demo-User-Id未指定 | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者ID形式不正 | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 利用者不存在 | × |
+| `USER_CONTEXT_REQUIRED` | 400 | X-User-Id未指定 | × |
+| `INVALID_USER_ID` | 400 | 利用者ID形式不正 | × |
+| `USER_NOT_FOUND` | 404 | 利用者不存在 | × |
 | `NET_INCOME_ALREADY_EXISTS` | 409 | 同一対象年月が登録済み | × |
 | `VALIDATION_ERROR` | 422 | 入力値不正 | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外エラー | ○ |
@@ -1482,7 +1482,7 @@ Phase1では、
 
 ### 25.7 ヘッダー
 
-- X-Demo-User-Id未指定でエラーとなること
+- X-User-Id未指定でエラーとなること
 - 利用者ID形式不正でエラーとなること
 - 存在しない利用者IDでエラーとなること
 - 論理削除済み利用者でエラーとなること
@@ -1522,7 +1522,7 @@ Phase1では、
 ### 26.1 Action
 
 HTTPリクエストを受け付け、
-入力値およびデモ利用者コンテキストを取得する。
+入力値および利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 登録内容を受け取り、
@@ -1619,7 +1619,7 @@ final readonly class CreateNetIncomeInput
 
 ```php
 $exists = NetIncome::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where('target_year_month', $targetYearMonth)
     ->exists();
 ```
@@ -1638,7 +1638,7 @@ Repositoryは、UseCaseから受け取った利用者IDおよび登録内容を�
 
 ```php
 $netIncome = NetIncome::query()->create([
-    'user_id' => $demoUserId,
+    'user_id' => $userId,
     'target_year_month' => $input->targetYearMonth,
     'amount' => $input->amount,
     'memo' => $input->memo,
@@ -1652,7 +1652,7 @@ $netIncome = NetIncome::query()->create([
 - `created_at`
 - `updated_at`
 
-`user_id` は、デモ利用者コンテキストから設定する。
+`user_id` は、利用者コンテキストから設定する。
 
 `id`、`created_at` および `updated_at` は、データベースまたはLaravelによって自動設定する。
 
@@ -1669,16 +1669,16 @@ $netIncome = NetIncome::query()->create([
 
 ```php
 $netIncome = DB::transaction(
-    function () use ($demoUserId, $input): NetIncome {
+    function () use ($userId, $input): NetIncome {
         if ($this->query->existsByUserAndYearMonth(
-            $demoUserId,
+            $userId,
             $input->targetYearMonth,
         )) {
             throw new NetIncomeAlreadyExistsException();
         }
 
         return $this->repository->create(
-            $demoUserId,
+            $userId,
             $input,
         );
     },
@@ -1736,13 +1736,13 @@ API Resourceは、Responderから利用する。
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id` を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id` を検証し、操作対象利用者を特定する。
 
 Action以降の処理では、検証済みの利用者コンテキストを使用する。
 
@@ -1758,9 +1758,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 |---|---|
 | 同一対象年月が登録済み | `NET_INCOME_ALREADY_EXISTS` |
 | 入力値不正 | `VALIDATION_ERROR` |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
 
 UNIQUE制約違反については、対象となった制約を判別し、`NET_INCOME_ALREADY_EXISTS` へ変換する。
@@ -1976,7 +1976,7 @@ Phase1では不要と判断した。
 
 ## 1. 概要
 
-操作対象となるデモ利用者に登録された
+操作対象となる利用者に登録された
 指定の手取り収入を取得する。
 
 手取り収入は、
@@ -2037,11 +2037,11 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、
+`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された
@@ -2076,7 +2076,7 @@ X-Demo-User-Id: 1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -2084,7 +2084,7 @@ X-Demo-User-Id: 1
 ```http
 GET /api/v1/net-incomes/15
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -2113,7 +2113,7 @@ GET /api/v1/net-incomes/15
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -2156,7 +2156,7 @@ NetIncome::findOrFail($netIncomeId);
 ```php
 NetIncome::query()
     ->where('id', $netIncomeId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -2183,7 +2183,7 @@ NetIncome::query()
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 手取り収入ID検証
     ↓
@@ -2318,7 +2318,7 @@ API共通方針で定めた
 
 以下の場合は、`404 Not Found` を返却する。
 
-- 指定されたデモ利用者が存在しない
+- 指定された利用者が存在しない
 - 指定された手取り収入が存在しない
 - 指定された手取り収入が他の利用者に帰属する
 
@@ -2336,9 +2336,9 @@ API共通方針で定めた
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id` が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id` が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `INVALID_NET_INCOME_ID` | 400 | 手取り収入IDの形式が不正である | × |
 | `NET_INCOME_NOT_FOUND` | 404 | 指定された手取り収入が存在しない、または利用者境界外である | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -2426,7 +2426,7 @@ GETメソッドの性質に従い、本APIは冪等である。
 
 ### 24.4 ヘッダー
 
-- `X-Demo-User-Id`未指定でエラーとなること
+- `X-User-Id`未指定でエラーとなること
 - 利用者ID形式不正でエラーとなること
 - 存在しない利用者IDでエラーとなること
 - 論理削除済み利用者でエラーとなること
@@ -2458,7 +2458,7 @@ GETメソッドの性質に従い、本APIは冪等である。
 
 HTTPリクエストを受け付け、
 パスパラメータおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 手取り収入詳細取得UseCaseを呼び出し、
 取得結果をResponderへ渡す。
@@ -2504,7 +2504,7 @@ Actionへ直接記述しない。
 ```php
 $netIncome = NetIncome::query()
     ->where('id', $netIncomeId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -2571,14 +2571,14 @@ Responderから利用する。
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降の処理では、
@@ -2596,9 +2596,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 手取り収入ID形式不正 | `INVALID_NET_INCOME_ID` |
 | 手取り収入不存在 | `NET_INCOME_NOT_FOUND` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
@@ -2751,7 +2751,7 @@ Phase1では、
 
 ## 1. 概要
 
-操作対象となるデモ利用者に登録された
+操作対象となる利用者に登録された
 手取り収入を更新する。
 
 更新できる項目は、
@@ -2810,11 +2810,11 @@ PATCH
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、
+`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に登録された
@@ -2849,7 +2849,7 @@ X-Demo-User-Id: 1
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -2859,7 +2859,7 @@ X-Demo-User-Id: 1
 PATCH /api/v1/net-incomes/15
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -2970,7 +2970,7 @@ X-Demo-User-Id: 1
 
 ## 12. バリデーション
 
-### 12.1 X-Demo-User-Id
+### 12.1 X-User-Id
 
 以下を検証する。
 
@@ -3113,7 +3113,7 @@ target_year_month
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 手取り収入ID検証
     ↓
@@ -3306,7 +3306,7 @@ API共通方針で定めた形式に一致しない場合は、
 以下の場合は、
 `404 Not Found`を返却する。
 
-- 指定されたデモ利用者が存在しない
+- 指定された利用者が存在しない
 - 指定された手取り収入が存在しない
 - 指定された手取り収入が他の利用者に帰属する
 
@@ -3334,9 +3334,9 @@ API共通方針で定めた形式に一致しない場合は、
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `INVALID_NET_INCOME_ID` | 400 | 手取り収入IDの形式が不正である | × |
 | `NET_INCOME_NOT_FOUND` | 404 | 指定された手取り収入が存在しない、または利用者境界外である | × |
 | `NET_INCOME_ALREADY_EXISTS` | 409 | 更新後の対象年月が重複している | × |
@@ -3486,7 +3486,7 @@ ETagやIf-Matchによる
 
 ### 25.8 ヘッダー
 
-- `X-Demo-User-Id`未指定で400となること
+- `X-User-Id`未指定で400となること
 - 利用者ID形式不正で400となること
 - 存在しない利用者IDで404となること
 - 論理削除済み利用者で404となること
@@ -3530,7 +3530,7 @@ ETagやIf-Matchによる
 HTTPリクエストを受け付け、
 手取り収入ID、
 更新内容および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの更新内容を受け取り、
@@ -3636,7 +3636,7 @@ final readonly class UpdateNetIncomeInput
 ```php
 $netIncome = NetIncome::query()
     ->where('id', $netIncomeId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -3652,7 +3652,7 @@ NetIncome::find($netIncomeId);
 
 ```php
 $exists = NetIncome::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where('target_year_month', $input->targetYearMonth)
     ->whereKeyNot($netIncomeId)
     ->exists();
@@ -3708,12 +3708,12 @@ $netIncome->save();
 ```php
 $netIncome = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $netIncomeId,
         $input,
     ): NetIncome {
         $netIncome = $this->query->findByUserAndId(
-            $demoUserId,
+            $userId,
             $netIncomeId,
         );
 
@@ -3722,7 +3722,7 @@ $netIncome = DB::transaction(
         }
 
         if ($this->query->existsByUserAndYearMonthExcludingId(
-            $demoUserId,
+            $userId,
             $input->targetYearMonth,
             $netIncomeId,
         )) {
@@ -3793,13 +3793,13 @@ API Resourceは、Responderから利用する。
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id` を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id` を検証し、操作対象利用者を特定する。
 
 Action以降の処理では、検証済みの利用者コンテキストを使用する。
 
@@ -3813,9 +3813,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 手取り収入ID形式不正 | `INVALID_NET_INCOME_ID` |
 | 手取り収入不存在 | `NET_INCOME_NOT_FOUND` |
 | 更新後対象年月の重複 | `NET_INCOME_ALREADY_EXISTS` |
@@ -3833,7 +3833,7 @@ SQL、スタックトレースおよび内部例外メッセージは、APIレ�
 HTTPリクエストを受け付け、
 手取り収入ID、
 更新内容および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの更新内容を受け取り、
@@ -4161,7 +4161,7 @@ Phase1では、同一手取り収入を複数人が同時編集する可能性�
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した判定対象年月以前の
 連続する3か月の手取り収入から
 平均手取り収入を算出して取得する。
@@ -4221,11 +4221,11 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、
+`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者の
@@ -4265,7 +4265,7 @@ GET /api/v1/net-incomes/average?targetYearMonth=2026-08
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json` を指定する |
 
 リクエスト例：
@@ -4273,7 +4273,7 @@ GET /api/v1/net-incomes/average?targetYearMonth=2026-08
 ```http
 GET /api/v1/net-incomes/average?targetYearMonth=2026-08
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -4312,7 +4312,7 @@ X-Demo-User-Id: 1
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -4405,7 +4405,7 @@ Phase1では、平均算出期間をクライアントから変更する機能�
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 targetYearMonth検証
     ↓
@@ -4580,9 +4580,9 @@ API共通方針で定めた形式に一致しない場合は、
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない | × |
 | `INVALID_TARGET_YEAR_MONTH` | 400 | 対象年月の形式が不正である | × |
 | `NET_INCOME_DATA_INSUFFICIENT` | 422 | 平均手取り収入を算出するためのデータが不足している | ○ |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -4686,7 +4686,7 @@ HTTP GETを使用する。
 
 ### 24.6 ヘッダー
 
-- `X-Demo-User-Id`未指定で400となること
+- `X-User-Id`未指定で400となること
 - 利用者ID形式不正で400となること
 - 存在しない利用者IDで404となること
 - 論理削除済み利用者で404となること
@@ -4714,7 +4714,7 @@ HTTP GETを使用する。
 
 HTTPリクエストを受け付け、
 判定対象年月および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの判定対象年月を受け取り、
@@ -4868,7 +4868,7 @@ final readonly class YearMonth
 
 ```php
 $netIncomes = NetIncome::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->whereIn(
         'target_year_month',
         $calculatedMonths,
@@ -5052,13 +5052,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id` を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id` を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -5072,9 +5072,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 判定対象年月の形式不正 | `INVALID_TARGET_YEAR_MONTH` |
 | 算出対象データ不足 | `NET_INCOME_DATA_INSUFFICIENT` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
@@ -5251,7 +5251,7 @@ Phase1では、共通メッセージを表示し、手取り収入一覧また�
 | ------------------------------ | ------------------ |
 | `INVALID_TARGET_YEAR_MONTH`    | 対象年月入力欄へ形式エラーを表示する |
 | `NET_INCOME_DATA_INSUFFICIENT` | データ不足の案内を表示する      |
-| `DEMO_USER_NOT_FOUND`          | デモ利用者選択画面へ戻す       |
+| `USER_NOT_FOUND`          | 利用者選択画面へ戻す       |
 | `INTERNAL_SERVER_ERROR`        | 共通エラー表示を行う         |
 
 ---

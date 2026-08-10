@@ -169,7 +169,7 @@ Phase1では、
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、月末資産状況の一覧を取得する。
+操作対象となる利用者について、月末資産状況の一覧を取得する。
 
 本APIでは、対象年月ごとの月末資産状況および確定状態を一覧表示するための情報を返却する。
 
@@ -213,10 +213,10 @@ GET /api/v1/month-end-asset-snapshots
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id` リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id` リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する月末資産状況のみ取得する。
@@ -229,7 +229,7 @@ X-Demo-User-Id: 1
 
 論理削除された利用者は、操作対象として扱わない。
 
-`X-Demo-User-Id` が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+`X-User-Id` が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
 
 ---
 
@@ -255,7 +255,7 @@ Phase1では、対象年月、確定状態などによる絞り込み条件は�
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json` を指定する |
 
 リクエスト例：
@@ -263,7 +263,7 @@ Phase1では、対象年月、確定状態などによる絞り込み条件は�
 ```http
 GET /api/v1/month-end-asset-snapshots
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 GETリクエストであるため、`Content-Type` は必須としない。
@@ -282,13 +282,13 @@ GETリクエストであるため、`Content-Type` は必須としない。
 
 本APIでは、リクエストボディおよびパスパラメータを使用しない。
 
-操作対象利用者は、`X-Demo-User-Id` リクエストヘッダーで指定する。
+操作対象利用者は、`X-User-Id` リクエストヘッダーで指定する。
 
 ---
 
 ## 11. バリデーション
 
-### 11.1 X-Demo-User-Id
+### 11.1 X-User-Id
 
 以下を検証する。
 
@@ -297,11 +297,11 @@ GETリクエストであるため、`Content-Type` は必須としない。
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id` が指定されていない場合は、`DEMO_USER_CONTEXT_REQUIRED` として扱う。
+`X-User-Id` が指定されていない場合は、`USER_CONTEXT_REQUIRED` として扱う。
 
-形式が不正な場合は、`INVALID_DEMO_USER_ID` として扱う。
+形式が不正な場合は、`INVALID_USER_ID` として扱う。
 
-指定された利用者が存在しない場合、または論理削除されている場合は、`DEMO_USER_NOT_FOUND` として扱う。
+指定された利用者が存在しない場合、または論理削除されている場合は、`USER_NOT_FOUND` として扱う。
 
 ### 11.2 利用者境界
 
@@ -349,7 +349,7 @@ user_id = 操作対象利用者ID
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -511,7 +511,7 @@ booleanで返却する。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -669,15 +669,15 @@ API共通方針で定めた
 
 ### 18.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -689,19 +689,19 @@ API共通方針で定めた
 
 ### 18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -717,13 +717,13 @@ API共通方針で定めたID形式に一致しない場合は、
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -796,8 +796,8 @@ SQL、
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -819,9 +819,9 @@ SQL、
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
 
 エラーコードの正式な定義は、
@@ -1049,8 +1049,8 @@ HTTP GETを使用する
 
 ### 24.8 リクエスト
 
-- `X-Demo-User-Id`を指定して取得できること
-- `X-Demo-User-Id`未指定で`400 Bad Request`となること
+- `X-User-Id`を指定して取得できること
+- `X-User-Id`未指定で`400 Bad Request`となること
 - 利用者ID形式不正で`400 Bad Request`となること
 - 存在しない利用者で`404 Not Found`となること
 - 論理削除済み利用者で`404 Not Found`となること
@@ -1113,7 +1113,7 @@ Phase1では、
 ### 25.1 Action
 
 HTTPリクエストを受け付け、
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 月末資産状況一覧取得UseCaseを呼び出し、
 取得結果をResponderへ渡す。
@@ -1168,7 +1168,7 @@ Actionへ直接記述しない。
 
 ```php
 $snapshots = MonthEndAssetSnapshot::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->orderByDesc('target_year_month')
     ->get([
         'id',
@@ -1299,9 +1299,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
 
 月末資産状況が0件であることは例外としない。
@@ -1446,7 +1446,7 @@ APIレスポンスは、対象年月の降順で返却される。
 
 取得完了前に、以前選択していた別利用者の月末資産状況を現在の利用者の情報として表示しない。
 
-デモ利用者を切り替えた場合は、以前の一覧データを破棄するか、新しい取得が完了するまでローディング状態を表示する。
+利用者を切り替えた場合は、以前の一覧データを破棄するか、新しい取得が完了するまでローディング状態を表示する。
 
 ---
 
@@ -1456,9 +1456,9 @@ APIレスポンスは、対象年月の降順で返却される。
 
 | エラーコード | フロントエンドの扱い |
 | --- | --- |
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
 
 月末資産状況が0件の場合は、エラー表示を行わない。
@@ -1604,7 +1604,7 @@ Phase1で管理する件数は限定的であることを前提とするため�
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した対象年月の
 月末資産状況を作成する。
 
@@ -1675,10 +1675,10 @@ POST
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 作成する月末資産状況は、指定された利用者へ紐付ける。
@@ -1687,7 +1687,7 @@ X-Demo-User-Id: 1
 
 利用者IDは、リクエストボディ、クエリパラメータまたはパスパラメータでは受け付けない。
 
-利用者IDは、ミドルウェアで設定されたデモ利用者コンテキストから取得する。
+利用者IDは、ミドルウェアで設定された利用者コンテキストから取得する。
 
 作成直後の確定状態は、未確定とする。
 
@@ -1731,7 +1731,7 @@ confirmed = false
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -1741,7 +1741,7 @@ confirmed = false
 POST /api/v1/month-end-asset-snapshots
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 
 ```
 
@@ -1770,7 +1770,7 @@ X-Demo-User-Id: 1
 - `createdAt`
 - `updatedAt`
 
-利用者IDは、`X-Demo-User-Id`から取得する。
+利用者IDは、`X-User-Id`から取得する。
 
 確定状態は、サーバー側で`false`を設定する。
 
@@ -1844,7 +1844,7 @@ confirmed = false
 
 ---
 
-### 11.4 X-Demo-User-Id
+### 11.4 X-User-Id
 
 以下を検証する。
 
@@ -1853,11 +1853,11 @@ confirmed = false
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、`DEMO_USER_CONTEXT_REQUIRED`として扱う。
+`X-User-Id`が指定されていない場合は、`USER_CONTEXT_REQUIRED`として扱う。
 
-形式が不正な場合は、`INVALID_DEMO_USER_ID`として扱う。
+形式が不正な場合は、`INVALID_USER_ID`として扱う。
 
-指定された利用者が存在しない場合、または論理削除されている場合は、`DEMO_USER_NOT_FOUND`として扱う。
+指定された利用者が存在しない場合、または論理削除されている場合は、`USER_NOT_FOUND`として扱う。
 
 ---
 
@@ -1915,7 +1915,7 @@ confirmed = false
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -2063,15 +2063,15 @@ API共通方針で定めた
 
 ### 18.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -2083,19 +2083,19 @@ API共通方針で定めた
 
 ### 18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -2111,13 +2111,13 @@ API共通方針で定めたID形式に一致しない場合は、
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -2253,8 +2253,8 @@ confirmed = false
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -2303,9 +2303,9 @@ confirmed = false
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_EXISTS` | 409 | 同一利用者・同一対象年月の月末資産状況がすでに存在する | × |
 | `VALIDATION_ERROR` | 422 | リクエスト項目がバリデーション条件を満たさない | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -2442,9 +2442,9 @@ target_year_month
 
 ### 22.4 users
 
-操作対象となるデモ利用者を保持する。
+操作対象となる利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が存在することを確認するために参照する。
+`X-User-Id`で指定された利用者が存在することを確認するために参照する。
 
 作成する月末資産状況の`user_id`には、操作対象利用者IDを設定する。
 
@@ -2491,7 +2491,7 @@ target_year_month
 
 ### 24.2 利用者境界
 
-- `X-Demo-User-Id`で指定した利用者に紐づいて作成されること
+- `X-User-Id`で指定した利用者に紐づいて作成されること
 - リクエストボディから利用者IDを指定できないこと
 - 他利用者の月末資産状況として作成できないこと
 - 同じ対象年月でも利用者が異なる場合は、それぞれ作成できること
@@ -2629,9 +2629,9 @@ user_id = 2, target_year_month = 2026-08
 
 ### 24.12 エラー時
 
-- `DEMO_USER_CONTEXT_REQUIRED`時に月末資産状況が作成されないこと
-- `INVALID_DEMO_USER_ID`時に月末資産状況が作成されないこと
-- `DEMO_USER_NOT_FOUND`時に月末資産状況が作成されないこと
+- `USER_CONTEXT_REQUIRED`時に月末資産状況が作成されないこと
+- `INVALID_USER_ID`時に月末資産状況が作成されないこと
+- `USER_NOT_FOUND`時に月末資産状況が作成されないこと
 - `VALIDATION_ERROR`時に月末資産状況が作成されないこと
 - `MONTH_END_ASSET_SNAPSHOT_ALREADY_EXISTS`時に月末資産状況が追加されないこと
 - `INTERNAL_SERVER_ERROR`時に不完全なレコードが残らないこと
@@ -2656,7 +2656,7 @@ user_id = 2, target_year_month = 2026-08
 
 HTTPリクエストを受け付け、
 入力値および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの対象年月を受け取り、
@@ -2764,7 +2764,7 @@ final readonly class CreateMonthEndAssetSnapshotInput
 
 ```php
 $exists = MonthEndAssetSnapshot::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where(
         'target_year_month',
         $input->targetYearMonth,
@@ -2800,7 +2800,7 @@ confirmed         = false
 
 ```php
 return MonthEndAssetSnapshot::create([
-    'user_id' => $demoUserId,
+    'user_id' => $userId,
     'target_year_month' => $input->targetYearMonth,
     'confirmed' => false,
 ]);
@@ -2829,13 +2829,13 @@ return MonthEndAssetSnapshot::create([
 ```php
 $snapshot = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $input,
     ): MonthEndAssetSnapshot {
         if (
             $this->query
                 ->existsByUserAndTargetYearMonth(
-                    $demoUserId,
+                    $userId,
                     $input->targetYearMonth,
                 )
         ) {
@@ -2844,7 +2844,7 @@ $snapshot = DB::transaction(
         }
 
         return $this->repository->create(
-            $demoUserId,
+            $userId,
             $input,
         );
     },
@@ -2928,13 +2928,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -2986,7 +2986,7 @@ MonthEndAssetSnapshot::create(
 - `user_id`
 - `confirmed`
 
-登録値は、検証済みDTOおよびデモ利用者コンテキストから明示的に組み立てる。
+登録値は、検証済みDTOおよび利用者コンテキストから明示的に組み立てる。
 
 ---
 
@@ -2998,9 +2998,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 同一対象年月重複 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_EXISTS` |
 | 入力値不正 | `VALIDATION_ERROR` |
 | 想定外例外 | `INTERNAL_SERVER_ERROR` |
@@ -3184,9 +3184,9 @@ if (
 
 | エラーコード | フロントエンドの扱い |
 | --- | --- |
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_EXISTS` | 対象年月の重複エラーを表示する |
 | `VALIDATION_ERROR` | 入力項目ごとにエラーを表示する |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
@@ -3324,11 +3324,11 @@ Phase1では、個人利用を前提としており、フロントエンドの�
 
 ### 27.11 利用者IDをリクエストで受け付けない理由
 
-作成先となる利用者は、デモ利用者コンテキストによって決定する。
+作成先となる利用者は、利用者コンテキストによって決定する。
 
 リクエストボディから`userId`を指定できるようにすると、他利用者のデータを作成できる可能性がある。
 
-そのため、利用者IDは`X-Demo-User-Id`から取得する。
+そのため、利用者IDは`X-User-Id`から取得する。
 
 ---
 
@@ -3379,7 +3379,7 @@ Phase1では、実装複雑性に対する効果が小さいため、アプリ�
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況の詳細情報を取得する。
 
 本APIでは、
@@ -3441,10 +3441,10 @@ GET
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する月末資産状況のみ取得できる。
@@ -3463,7 +3463,7 @@ AND
 user_id = 操作対象利用者ID
 ```
 
-`X-Demo-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+`X-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
 
 ---
 
@@ -3499,7 +3499,7 @@ GET /api/v1/month-end-asset-snapshots/12
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -3507,7 +3507,7 @@ GET /api/v1/month-end-asset-snapshots/12
 ```http
 GET /api/v1/month-end-asset-snapshots/12
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 GETリクエストであるため、
@@ -3533,7 +3533,7 @@ GETリクエストであるため、
 パスパラメータの`snapshotId`で指定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ---
@@ -3622,7 +3622,7 @@ user_id = 操作対象利用者ID
 
 ---
 
-### 11.4 X-Demo-User-Id
+### 11.4 X-User-Id
 
 以下を検証する。
 
@@ -3631,17 +3631,17 @@ user_id = 操作対象利用者ID
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -3710,7 +3710,7 @@ API共通方針に従う。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -3876,15 +3876,15 @@ API共通方針で定めた
 
 ### 18.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -3896,19 +3896,19 @@ API共通方針で定めた
 
 ### 18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -3924,13 +3924,13 @@ API共通方針で定めたID形式に一致しない場合は、
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -4066,8 +4066,8 @@ SQL、
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -4102,9 +4102,9 @@ API共通方針で定めたID形式に
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`の形式が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 指定された月末資産状況が存在しない、または他の利用者に属している | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -4226,9 +4226,9 @@ VAL-001 商品別月末評価額一覧取得APIを使用する。
 ### 22.4 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -4312,7 +4312,7 @@ snapshotId = 12
 user_id    = 2
 ```
 
-`X-Demo-User-Id: 1`で
+`X-User-Id: 1`で
 `snapshotId = 12`を指定しても、
 取得できないことを確認する。
 
@@ -4360,8 +4360,8 @@ user_id    = 2
 
 ### 24.8 リクエスト
 
-- `X-Demo-User-Id`を指定して取得できること
-- `X-Demo-User-Id`未指定で`400 Bad Request`となること
+- `X-User-Id`を指定して取得できること
+- `X-User-Id`未指定で`400 Bad Request`となること
 - 利用者ID形式不正で`400 Bad Request`となること
 - 存在しない利用者で`404 Not Found`となること
 - 論理削除済み利用者で`404 Not Found`となること
@@ -4412,9 +4412,9 @@ Phase1では、
 
 ### 24.12 エラー時
 
-- `DEMO_USER_CONTEXT_REQUIRED`時にデータが変更されないこと
-- `INVALID_DEMO_USER_ID`時にデータが変更されないこと
-- `DEMO_USER_NOT_FOUND`時にデータが変更されないこと
+- `USER_CONTEXT_REQUIRED`時にデータが変更されないこと
+- `INVALID_USER_ID`時にデータが変更されないこと
+- `USER_NOT_FOUND`時にデータが変更されないこと
 - `VALIDATION_ERROR`時にデータが変更されないこと
 - `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`時にデータが変更されないこと
 - 他利用者の月末資産状況を指定した場合に内部情報が公開されないこと
@@ -4438,7 +4438,7 @@ Phase1では、
 
 HTTPリクエストを受け付け、
 月末資産状況IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 月末資産状況詳細取得UseCaseを呼び出し、
 取得結果をResponderへ渡す。
@@ -4524,7 +4524,7 @@ Queryで行う。
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'target_year_month',
@@ -4635,13 +4635,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -4729,9 +4729,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 月末資産状況ID形式不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -4910,9 +4910,9 @@ await apiClient.get(
 
 | エラーコード | フロントエンドの扱い |
 | --- | --- |
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたはパラメータとして扱う |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻し、対象が存在しないことを表示する |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
@@ -5060,7 +5060,7 @@ Phase1では、詳細取得頻度およびデータ量が限定的であるた�
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した未確定の月末資産状況を確定する。
 
 月末資産状況を確定することで、
@@ -5136,12 +5136,12 @@ POST
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する
@@ -5174,7 +5174,7 @@ user_id = 操作対象利用者ID
 操作対象利用者の境界を越えて
 処理しない。
 
-`X-Demo-User-Id`が指定されていない場合、
+`X-User-Id`が指定されていない場合、
 形式が不正な場合、
 または指定された利用者が存在しない場合は、
 API共通方針に従ってエラーを返却する。
@@ -5230,7 +5230,7 @@ POST /api/v1/month-end-asset-snapshots/12/confirm
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -5238,7 +5238,7 @@ POST /api/v1/month-end-asset-snapshots/12/confirm
 ```http
 POST /api/v1/month-end-asset-snapshots/12/confirm
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIでは
@@ -5281,7 +5281,7 @@ X-Demo-User-Id: 1
 パスパラメータの`snapshotId`で指定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ---
@@ -5465,7 +5465,7 @@ UseCaseで実施する。
 
 ---
 
-### 11.8 X-Demo-User-Id
+### 11.8 X-User-Id
 
 以下を検証する。
 
@@ -5474,17 +5474,17 @@ UseCaseで実施する。
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -5563,7 +5563,7 @@ UseCaseで実施する。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -5650,7 +5650,7 @@ Laravelでは、
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->lockForUpdate()
     ->first();
 ```
@@ -5768,15 +5768,15 @@ API共通方針で定めた
 
 ### 18.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -5788,19 +5788,19 @@ API共通方針で定めた
 
 ### 18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -5816,13 +5816,13 @@ API共通方針で定めたID形式に一致しない場合は、
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -6059,8 +6059,8 @@ confirmed = true
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -6113,9 +6113,9 @@ API共通方針で定めたID形式に
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`の形式が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他の利用者に属している | × |
 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED` | 409 | 月末資産状況がすでに確定済みである | × |
@@ -6337,9 +6337,9 @@ confirmed = true
 ### 22.7 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -6588,9 +6588,9 @@ confirmed = true
 
 ### 24.16 エラー時
 
-- `DEMO_USER_CONTEXT_REQUIRED`時に確定されないこと
-- `INVALID_DEMO_USER_ID`時に確定されないこと
-- `DEMO_USER_NOT_FOUND`時に確定されないこと
+- `USER_CONTEXT_REQUIRED`時に確定されないこと
+- `INVALID_USER_ID`時に確定されないこと
+- `USER_NOT_FOUND`時に確定されないこと
 - `VALIDATION_ERROR`時に確定されないこと
 - `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`時にデータが変更されないこと
 - `MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED`時にデータが変更されないこと
@@ -6619,7 +6619,7 @@ confirmed = true
 
 HTTPリクエストを受け付け、
 月末資産状況IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 月末資産状況確定UseCaseを呼び出し、
 処理結果をResponderへ渡す。
@@ -6721,7 +6721,7 @@ UseCaseおよびQueryで実施する。
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -6808,7 +6808,7 @@ $registeredAssetAccountIds =
 ```php
 $existsPreviousUnconfirmed =
     MonthEndAssetSnapshot::query()
-        ->where('user_id', $demoUserId)
+        ->where('user_id', $userId)
         ->where(
             'target_year_month',
             '<',
@@ -6863,13 +6863,13 @@ return $snapshot;
 ```php
 $snapshot = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $snapshotId,
     ): MonthEndAssetSnapshot {
         $snapshot =
             $this->snapshotQuery
                 ->findByUserAndIdForUpdate(
-                    $demoUserId,
+                    $userId,
                     $snapshotId,
                 );
 
@@ -6884,17 +6884,17 @@ $snapshot = DB::transaction(
         }
 
         $this->confirmOrderValidator->validate(
-            $demoUserId,
+            $userId,
             $snapshot,
         );
 
         $this->assetBalanceValidator->validate(
-            $demoUserId,
+            $userId,
             $snapshot,
         );
 
         $this->holdingValueValidator->validate(
-            $demoUserId,
+            $userId,
             $snapshot,
         );
 
@@ -6916,7 +6916,7 @@ $snapshot = DB::transaction(
 ```php
 return MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->lockForUpdate()
     ->first();
 ```
@@ -7010,13 +7010,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -7049,9 +7049,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 月末資産状況ID形式不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -7387,9 +7387,9 @@ VAL-001 商品別月末評価額一覧画面や
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたはパラメータとして扱う |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED` | 確定済みであることを表示して再取得する |
@@ -7673,7 +7673,7 @@ Phase1ではデータ量および
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した確定済みの月末資産状況を
 未確定状態へ戻す。
 
@@ -7761,12 +7761,12 @@ POST
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する
@@ -7805,7 +7805,7 @@ user_id = 操作対象利用者ID
 月末資産状況を含めて
 最新確定年月を判定してはならない。
 
-`X-Demo-User-Id`が指定されていない場合、
+`X-User-Id`が指定されていない場合、
 形式が不正な場合、
 または指定された利用者が存在しない場合は、
 API共通方針に従ってエラーを返却する。
@@ -7861,7 +7861,7 @@ POST /api/v1/month-end-asset-snapshots/12/unconfirm
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -7869,7 +7869,7 @@ POST /api/v1/month-end-asset-snapshots/12/unconfirm
 ```http
 POST /api/v1/month-end-asset-snapshots/12/unconfirm
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIでは
@@ -7912,7 +7912,7 @@ X-Demo-User-Id: 1
 パスパラメータの`snapshotId`で指定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ---
@@ -8104,7 +8104,7 @@ confirmed = true
 
 ---
 
-### 11.8 X-Demo-User-Id
+### 11.8 X-User-Id
 
 以下を検証する。
 
@@ -8113,17 +8113,17 @@ confirmed = true
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -8198,7 +8198,7 @@ UseCaseで実施する。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -8280,7 +8280,7 @@ Laravelでは、
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->lockForUpdate()
     ->first();
 ```
@@ -8397,15 +8397,15 @@ API共通方針で定めた
 
 ### 18.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -8417,19 +8417,19 @@ API共通方針で定めた
 
 ### 18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -8445,13 +8445,13 @@ API共通方針で定めたID形式に一致しない場合は、
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -8646,8 +8646,8 @@ confirmed = false
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -8700,9 +8700,9 @@ API共通方針で定めたID形式に
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`の形式が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他の利用者に属している | × |
 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_UNCONFIRMED` | 409 | 月末資産状況がすでに未確定である | × |
@@ -8859,9 +8859,9 @@ confirmed = false
 ### 22.4 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -9115,9 +9115,9 @@ confirmed = false
 
 ### 24.15 エラー時
 
-- `DEMO_USER_CONTEXT_REQUIRED`時に確定解除されないこと
-- `INVALID_DEMO_USER_ID`時に確定解除されないこと
-- `DEMO_USER_NOT_FOUND`時に確定解除されないこと
+- `USER_CONTEXT_REQUIRED`時に確定解除されないこと
+- `INVALID_USER_ID`時に確定解除されないこと
+- `USER_NOT_FOUND`時に確定解除されないこと
 - `VALIDATION_ERROR`時に確定解除されないこと
 - `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`時にデータが変更されないこと
 - `MONTH_END_ASSET_SNAPSHOT_ALREADY_UNCONFIRMED`時にデータが変更されないこと
@@ -9144,7 +9144,7 @@ confirmed = false
 
 HTTPリクエストを受け付け、
 月末資産状況IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 月末資産状況確定解除UseCaseを呼び出し、
 処理結果をResponderへ渡す。
@@ -9241,7 +9241,7 @@ UseCaseおよびQueryで実施する。
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -9274,7 +9274,7 @@ MonthEndAssetSnapshot::find($snapshotId);
 ```php
 $latestConfirmedSnapshot =
     MonthEndAssetSnapshot::query()
-        ->where('user_id', $demoUserId)
+        ->where('user_id', $userId)
         ->where('confirmed', true)
         ->orderByDesc('target_year_month')
         ->first();
@@ -9353,13 +9353,13 @@ return $snapshot;
 ```php
 $snapshot = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $snapshotId,
     ): MonthEndAssetSnapshot {
         $snapshot =
             $this->snapshotQuery
                 ->findByUserAndIdForUpdate(
-                    $demoUserId,
+                    $userId,
                     $snapshotId,
                 );
 
@@ -9376,7 +9376,7 @@ $snapshot = DB::transaction(
         $latestConfirmedSnapshot =
             $this->snapshotQuery
                 ->findLatestConfirmedByUserForUpdate(
-                    $demoUserId,
+                    $userId,
                 );
 
         if (
@@ -9410,7 +9410,7 @@ $snapshot = DB::transaction(
 ```php
 return MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->lockForUpdate()
     ->first();
 ```
@@ -9421,7 +9421,7 @@ return MonthEndAssetSnapshot::query()
 
 ```php
 return MonthEndAssetSnapshot::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->where('confirmed', true)
     ->orderByDesc('target_year_month')
     ->lockForUpdate()
@@ -9468,7 +9468,7 @@ MonthEndAssetSnapshotUnconfirmOrderValidator
 
 ```php
 $this->unconfirmOrderValidator->validate(
-    $demoUserId,
+    $userId,
     $snapshot,
 );
 ```
@@ -9587,14 +9587,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -9635,9 +9635,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 月末資産状況ID形式不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -9980,9 +9980,9 @@ SNP-003 月末資産状況詳細取得
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたはパラメータとして扱う |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `MONTH_END_ASSET_SNAPSHOT_ALREADY_UNCONFIRMED` | 未確定であることを表示して再取得する |
@@ -10316,7 +10316,7 @@ Phase1では
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況に紐づく
 月末資産残高の一覧を取得する。
 
@@ -10397,12 +10397,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する
@@ -10442,9 +10442,9 @@ user_id = 操作対象利用者ID
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
-`X-Demo-User-Id`が指定されていない場合、
+`X-User-Id`が指定されていない場合、
 形式が不正な場合、
 または指定された利用者が存在しない場合は、
 API共通方針に従ってエラーを返却する。
@@ -10496,7 +10496,7 @@ Phase1では、
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -10504,7 +10504,7 @@ Phase1では、
 ```http
 GET /api/v1/month-end-asset-snapshots/12/asset-balances
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 GETリクエストであるため、
@@ -10530,7 +10530,7 @@ GETリクエストであるため、
 パスパラメータの`snapshotId`で指定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ---
@@ -10717,7 +10717,7 @@ confirmed = false
 
 ---
 
-### 11.8 X-Demo-User-Id
+### 11.8 X-User-Id
 
 以下を検証する。
 
@@ -10726,17 +10726,17 @@ confirmed = false
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -10809,7 +10809,7 @@ UseCaseおよびQueryで実施する。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -11160,15 +11160,15 @@ API共通方針で定めた
 
 ### 20.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -11180,19 +11180,19 @@ API共通方針で定めた
 
 ### 20.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -11208,13 +11208,13 @@ API共通方針で定めたID形式に一致しない場合は、
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -11401,8 +11401,8 @@ PostgreSQLの内部情報および
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -11442,9 +11442,9 @@ API共通方針で定めたID形式に
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`の形式が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他の利用者に属している | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -11636,9 +11636,9 @@ user_id = 操作対象利用者ID
 ### 24.5 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -11973,9 +11973,9 @@ SQL発行回数が増加しないことを確認する。
 
 ### 26.16 エラー時
 
-- `DEMO_USER_CONTEXT_REQUIRED`時に共通エラーレスポンスとなること
-- `INVALID_DEMO_USER_ID`時に共通エラーレスポンスとなること
-- `DEMO_USER_NOT_FOUND`時に共通エラーレスポンスとなること
+- `USER_CONTEXT_REQUIRED`時に共通エラーレスポンスとなること
+- `INVALID_USER_ID`時に共通エラーレスポンスとなること
+- `USER_NOT_FOUND`時に共通エラーレスポンスとなること
 - `VALIDATION_ERROR`時に共通エラーレスポンスとなること
 - `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`時に共通エラーレスポンスとなること
 - エラー発生時にもデータが変更されないこと
@@ -12000,7 +12000,7 @@ SQL発行回数が増加しないことを確認する。
 
 HTTPリクエストを受け付け、
 月末資産状況IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 月末資産残高一覧取得UseCaseを呼び出し、
 取得結果をResponderへ渡す。
@@ -12103,7 +12103,7 @@ UseCaseおよびQueryで行う。
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'target_year_month',
@@ -12260,7 +12260,7 @@ Query側で並び替えることを基本とする。
 
 ```php
 $assetAccounts = AssetAccount::query()
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->orderBy('name')
     ->orderBy('id')
     ->get();
@@ -12430,14 +12430,14 @@ API Resourceでは、
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -12529,9 +12529,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 月末資産状況ID形式不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -12863,9 +12863,9 @@ BAL-001のレスポンスだけを使用して
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたはパラメータとして扱う |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
@@ -13133,7 +13133,7 @@ Phase1ではデータ量および
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況に紐づく
 資産口座単位の月末資産残高を登録する。
 
@@ -13198,10 +13198,10 @@ POST
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する月末資産状況についてのみ、月末資産残高を登録できる。
@@ -13232,11 +13232,11 @@ user_id = 操作対象利用者ID
 
 利用者IDは、リクエストボディ、クエリパラメータまたはパスパラメータでは受け付けない。
 
-利用者IDは、ミドルウェアで設定されたデモ利用者コンテキストから取得する。
+利用者IDは、ミドルウェアで設定された利用者コンテキストから取得する。
 
 月末資産残高の`user_id`は保持せず、月末資産状況および資産口座との関連から利用者境界を保証する。
 
-`X-Demo-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+`X-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
 
 本APIでは、他の利用者に属する月末資産状況、資産口座および月末資産残高の存在をレスポンスから推測できないようにする。
 
@@ -13276,7 +13276,7 @@ POST /api/v1/month-end-asset-snapshots/12/asset-balances
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -13286,7 +13286,7 @@ POST /api/v1/month-end-asset-snapshots/12/asset-balances
 POST /api/v1/month-end-asset-snapshots/12/asset-balances
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -13650,7 +13650,7 @@ asset_account_id
 
 ---
 
-### 11.10 X-Demo-User-Id
+### 11.10 X-User-Id
 
 以下を検証する。
 
@@ -13659,17 +13659,17 @@ asset_account_id
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -13752,7 +13752,7 @@ UseCaseおよびQueryで実施する。
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -14111,15 +14111,15 @@ API共通方針で定めた
 
 ### 21.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -14131,20 +14131,20 @@ API共通方針で定めた
 
 ### 21.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -14160,13 +14160,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -14454,8 +14454,8 @@ PostgreSQLの制約名および
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -14515,9 +14515,9 @@ PostgreSQLの制約名および
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`、`assetAccountId`または`balance`が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他利用者に属している | × |
 | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 409 | 月末資産状況が確定済みである | × |
@@ -14777,9 +14777,9 @@ asset_account_id
 ### 25.5 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -15139,9 +15139,9 @@ asset_account_id = 3
 以下のエラー時に、
 月末資産残高が登録されないことを確認する。
 
-- `DEMO_USER_CONTEXT_REQUIRED`
-- `INVALID_DEMO_USER_ID`
-- `DEMO_USER_NOT_FOUND`
+- `USER_CONTEXT_REQUIRED`
+- `INVALID_USER_ID`
+- `USER_NOT_FOUND`
 - `VALIDATION_ERROR`
 - `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
 - `MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
@@ -15173,7 +15173,7 @@ HTTPリクエストを受け付け、
 月末資産状況ID、
 登録対象の資産口座ID、
 月末資産残高および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの入力値を受け取り、
@@ -15322,7 +15322,7 @@ final readonly class CreateMonthEndAssetBalanceInput
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'user_id',
@@ -15386,7 +15386,7 @@ $assetAccount = AssetAccount::query()
     )
     ->where(
         'user_id',
-        $demoUserId,
+        $userId,
     )
     ->first();
 ```
@@ -15558,14 +15558,14 @@ Repositoryでは、
 ```php
 $balance = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $snapshotId,
         $input,
     ): MonthEndAssetBalance {
         $snapshot =
             $this->snapshotQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $snapshotId,
                 );
 
@@ -15582,7 +15582,7 @@ $balance = DB::transaction(
         $assetAccount =
             $this->assetAccountQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $input->assetAccountId,
                 );
 
@@ -15774,14 +15774,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -15854,9 +15854,9 @@ LaravelおよびPostgreSQLの内部例外は、
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 入力値不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -15899,7 +15899,7 @@ APIレスポンスへ含めない。
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況に紐づく
 既存の月末資産残高を更新する。
 
@@ -15972,10 +15972,10 @@ PATCH
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する月末資産状況についてのみ、月末資産残高を更新できる。
@@ -16016,11 +16016,11 @@ asset_account_id = assetAccountId
 
 利用者IDは、リクエストボディ、クエリパラメータまたはパスパラメータでは受け付けない。
 
-利用者IDは、ミドルウェアで設定されたデモ利用者コンテキストから取得する。
+利用者IDは、ミドルウェアで設定された利用者コンテキストから取得する。
 
 月末資産残高自体には`user_id`を保持せず、月末資産状況および資産口座との関連から利用者境界を保証する。
 
-`X-Demo-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+`X-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
 
 本APIでは、他の利用者に属する月末資産状況、資産口座および月末資産残高の存在をレスポンスから推測できないようにする。
 
@@ -16073,7 +16073,7 @@ asset_account_id = assetAccountId
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -16083,7 +16083,7 @@ asset_account_id = assetAccountId
 PATCH /api/v1/month-end-asset-snapshots/12/asset-balances/3
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -16439,7 +16439,7 @@ balance = 1200000
 
 ---
 
-### 11.11 X-Demo-User-Id
+### 11.11 X-User-Id
 
 以下を検証する。
 
@@ -16448,17 +16448,17 @@ balance = 1200000
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -16547,7 +16547,7 @@ Form Requestは、
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -16953,15 +16953,15 @@ API共通方針で定めた
 
 ### 22.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -16973,20 +16973,20 @@ API共通方針で定めた
 
 ### 22.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -17002,13 +17002,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -17293,8 +17293,8 @@ PostgreSQLの制約名および
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -17354,9 +17354,9 @@ PostgreSQLの制約名および
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`、`assetAccountId`または`balance`が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他利用者に属している | × |
 | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 409 | 月末資産状況が確定済みである | × |
@@ -17628,9 +17628,9 @@ asset_account_id
 ### 26.5 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -18037,9 +18037,9 @@ balance = 1200000
 既存の月末資産残高が
 変更されないことを確認する。
 
-- `DEMO_USER_CONTEXT_REQUIRED`
-- `INVALID_DEMO_USER_ID`
-- `DEMO_USER_NOT_FOUND`
+- `USER_CONTEXT_REQUIRED`
+- `INVALID_USER_ID`
+- `USER_NOT_FOUND`
 - `VALIDATION_ERROR`
 - `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
 - `MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
@@ -18072,7 +18072,7 @@ HTTPリクエストを受け付け、
 月末資産状況ID、
 資産口座ID、
 更新後の月末資産残高および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの入力値を受け取り、
@@ -18229,7 +18229,7 @@ final readonly class UpdateMonthEndAssetBalanceInput
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'user_id',
@@ -18275,7 +18275,7 @@ if ($snapshot->confirmed) {
 ```php
 $assetAccount = AssetAccount::query()
     ->where('id', $assetAccountId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first();
 ```
 
@@ -18397,7 +18397,7 @@ Repositoryでは、以下の処理は行わない。
 ```php
 $balance = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $snapshotId,
         $assetAccountId,
         $input,
@@ -18405,7 +18405,7 @@ $balance = DB::transaction(
         $snapshot =
             $this->snapshotQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $snapshotId,
                 );
 
@@ -18422,7 +18422,7 @@ $balance = DB::transaction(
         $assetAccount =
             $this->assetAccountQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $assetAccountId,
                 );
 
@@ -18584,13 +18584,13 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定ミドルウェアでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -18669,9 +18669,9 @@ LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 入力値不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -19116,9 +19116,9 @@ if (
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 入力項目または不正なURLとしてエラー表示する |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 確定済みのため編集できないことを表示する |
@@ -19447,7 +19447,7 @@ Phase1では
 ### 31.16 楽観ロックを採用しない理由
 
 Phase1では、
-認証なしのデモ利用者を前提とし、
+認証なしの利用者を前提とし、
 同一資産残高を
 複数利用者が同時編集するケースを
 主要要件としない。
@@ -19539,7 +19539,7 @@ GET /api/v1/month-end-asset-snapshots/12/holding-values
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -19547,7 +19547,7 @@ GET /api/v1/month-end-asset-snapshots/12/holding-values
 ```http
 GET /api/v1/month-end-asset-snapshots/12/holding-values
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 GETリクエストであるため、
@@ -19572,7 +19572,7 @@ GETリクエストであるため、
 以下から特定する。
 
 ```text
-X-Demo-User-Id
+X-User-Id
     → 操作対象利用者
 
 snapshotId
@@ -19857,7 +19857,7 @@ holding_asset_id = 対象保有商品ID
 
 ---
 
-### 11.11 X-Demo-User-Id
+### 11.11 X-User-Id
 
 以下を検証する。
 
@@ -19866,17 +19866,17 @@ holding_asset_id = 対象保有商品ID
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -19948,7 +19948,7 @@ GET /api/v1/month-end-asset-snapshots/12/holding-values
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -19956,7 +19956,7 @@ GET /api/v1/month-end-asset-snapshots/12/holding-values
 ```http
 GET /api/v1/month-end-asset-snapshots/12/holding-values
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 GETリクエストであるため、
@@ -19981,7 +19981,7 @@ GETリクエストであるため、
 以下から特定する。
 
 ```text
-X-Demo-User-Id
+X-User-Id
     → 操作対象利用者
 
 snapshotId
@@ -20261,7 +20261,7 @@ holding_asset_id = 対象保有商品ID
 
 ---
 
-### 11.11 X-Demo-User-Id
+### 11.11 X-User-Id
 
 以下を検証する。
 
@@ -20270,17 +20270,17 @@ holding_asset_id = 対象保有商品ID
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -20367,7 +20367,7 @@ holding_asset_id = 対象保有商品ID
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -20852,9 +20852,9 @@ API共通方針で定めた
 本APIでは、
 主に以下のエラーを扱う。
 
-- デモ利用者コンテキスト未指定
-- デモ利用者ID形式不正
-- デモ利用者不存在
+- 利用者コンテキスト未指定
+- 利用者ID形式不正
+- 利用者不存在
 - `snapshotId`形式不正
 - 月末資産状況不存在
 - 想定外のサーバーエラー
@@ -20873,15 +20873,15 @@ API共通方針で定めた
 
 ### 23.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -20893,20 +20893,20 @@ API共通方針で定めた
 
 ### 23.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -20922,13 +20922,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -21151,8 +21151,8 @@ PostgreSQLの制約名および
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -21218,9 +21218,9 @@ PostgreSQLの制約名および
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他利用者に属している | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -21359,7 +21359,7 @@ JOIN等を利用して
 
 ```http
 GET /api/v1/month-end-asset-snapshots/12/holding-values
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 を複数回実行しても、
@@ -21638,9 +21638,9 @@ holding_asset_id
 ### 29.6 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 本APIでは、
@@ -22028,7 +22028,7 @@ Eager Loadingまたは
 
 ### 31.19 異常系
 
-- `X-Demo-User-Id`未指定で`400 Bad Request`となること
+- `X-User-Id`未指定で`400 Bad Request`となること
 - 利用者ID形式不正で`400 Bad Request`となること
 - 存在しない利用者で`404 Not Found`となること
 - `snapshotId`形式不正で`422 Unprocessable Entity`となること
@@ -22050,7 +22050,7 @@ Eager Loadingまたは
 
 HTTPリクエストを受け付け、
 月末資産状況IDおよび
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 パスパラメータの検証後、
 商品別月末評価額一覧取得UseCaseを呼び出す。
@@ -22178,7 +22178,7 @@ Query側で適切に検索条件へ反映する。
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'user_id',
@@ -22273,7 +22273,7 @@ target_year_month
 ```php
 $query->where(
     'asset_accounts.user_id',
-    $demoUserId,
+    $userId,
 );
 ```
 
@@ -22577,7 +22577,7 @@ Phase1では
 
 ```php
 $items = $this->query->findHoldingValues(
-    $demoUserId,
+    $userId,
     $snapshot->id,
     $snapshot->target_year_month,
 );
@@ -22668,14 +22668,14 @@ return MonthEndHoldingValueResource::collection(
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -22808,9 +22808,9 @@ LaravelおよびPostgreSQLの
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | `snapshotId`形式不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -23257,9 +23257,9 @@ if (isLoading) {
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたはパラメータとして扱う |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
@@ -23611,7 +23611,7 @@ VAL-001を再取得する。
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況に紐づく
 商品別月末評価額を新規登録する。
 
@@ -23687,10 +23687,10 @@ POST
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する月末資産状況についてのみ、商品別月末評価額を登録できる。
@@ -23749,9 +23749,9 @@ users
 
 利用者IDは、リクエストボディ、クエリパラメータまたはパスパラメータでは受け付けない。
 
-利用者IDは、ミドルウェアで設定されたデモ利用者コンテキストから取得する。
+利用者IDは、ミドルウェアで設定された利用者コンテキストから取得する。
 
-`X-Demo-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+`X-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
 
 本APIでは、他の利用者に属する以下のリソースの存在をレスポンスから推測できないようにする。
 
@@ -23802,7 +23802,7 @@ POST /api/v1/month-end-asset-snapshots/12/holding-values
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -23812,7 +23812,7 @@ POST /api/v1/month-end-asset-snapshots/12/holding-values
 POST /api/v1/month-end-asset-snapshots/12/holding-values
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -24294,7 +24294,7 @@ value = 0
 
 ---
 
-### 11.12 X-Demo-User-Id
+### 11.12 X-User-Id
 
 以下を検証する。
 
@@ -24303,17 +24303,17 @@ value = 0
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -24335,7 +24335,7 @@ value = 0
 
 これらは、
 パスパラメータ、
-デモ利用者コンテキスト、
+利用者コンテキスト、
 既存リソースとの関連または
 サーバー側の処理によって決定する。
 
@@ -24397,7 +24397,7 @@ value = 0
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -24821,15 +24821,15 @@ API共通方針で定めた
 
 ### 23.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -24841,20 +24841,20 @@ API共通方針で定めた
 
 ### 23.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -24870,13 +24870,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -25184,8 +25184,8 @@ PostgreSQLの制約名および
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -25247,9 +25247,9 @@ PostgreSQLの制約名および
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `snapshotId`、`holdingAssetId`または`value`が不正である | × |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 404 | 月末資産状況が存在しない、または他利用者に属している | × |
 | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 409 | 月末資産状況が確定済みである | × |
@@ -25462,7 +25462,7 @@ HTTPリクエストを受け付け、
 月末資産状況ID、
 登録対象の保有商品ID、
 商品別月末評価額および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの入力値を受け取り、
@@ -25619,7 +25619,7 @@ final readonly class CreateMonthEndHoldingValueInput
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'user_id',
@@ -25691,7 +25691,7 @@ $holdingAsset = HoldingAsset::query()
     )
     ->where(
         'asset_accounts.user_id',
-        $demoUserId,
+        $userId,
     )
     ->first([
         'holding_assets.id',
@@ -25908,14 +25908,14 @@ Repositoryでは、
 ```php
 $holdingValue = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $snapshotId,
         $input,
     ): MonthEndHoldingValue {
         $snapshot =
             $this->snapshotQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $snapshotId,
                 );
 
@@ -25932,7 +25932,7 @@ $holdingValue = DB::transaction(
         $holdingAsset =
             $this->holdingAssetQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $input->holdingAssetId,
                 );
 
@@ -26166,14 +26166,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -26317,9 +26317,9 @@ LaravelおよびPostgreSQLの
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 入力値不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -26915,9 +26915,9 @@ if (detail.field === 'value') {
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 入力項目または不正な画面状態としてエラー表示する |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 確定済みのため登録できないことを表示する |
@@ -27340,7 +27340,7 @@ Phase1では
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況に紐づく
 既存の商品別月末評価額を更新する。
 
@@ -27402,7 +27402,7 @@ PATCH
 
 ## 1. 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定した月末資産状況に紐づく
 既存の商品別月末評価額を更新する。
 
@@ -27476,10 +27476,10 @@ PATCH
 
 Phase1では、認証機能を実装しない。
 
-操作対象となるデモ利用者は、`X-Demo-User-Id`リクエストヘッダーで指定する。
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する月末資産状況についてのみ、商品別月末評価額を更新できる。
@@ -27548,9 +27548,9 @@ users
 
 利用者IDは、リクエストボディ、クエリパラメータまたはパスパラメータでは受け付けない。
 
-利用者IDは、ミドルウェアで設定されたデモ利用者コンテキストから取得する。
+利用者IDは、ミドルウェアで設定された利用者コンテキストから取得する。
 
-`X-Demo-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+`X-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
 
 本APIでは、他の利用者に属する以下のリソースの存在をレスポンスから推測できないようにする。
 
@@ -27611,7 +27611,7 @@ holding_asset_id = holdingAssetId
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Content-Type` | ○ | `application/json`を指定する |
 | `Accept` | ○ | `application/json`を指定する |
 
@@ -27621,7 +27621,7 @@ holding_asset_id = holdingAssetId
 PATCH /api/v1/month-end-asset-snapshots/12/holding-values/5
 Content-Type: application/json
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 ---
@@ -28107,7 +28107,7 @@ value = 0
 
 ---
 
-### 11.13 X-Demo-User-Id
+### 11.13 X-User-Id
 
 以下を検証する。
 
@@ -28116,17 +28116,17 @@ value = 0
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -28152,7 +28152,7 @@ value = 0
 パスパラメータから取得する。
 
 `userId`は、
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
 その他の値は、
 既存リソースとの関連または
@@ -28219,7 +28219,7 @@ value = 0
     ↓
 リクエストID生成
     ↓
-X-Demo-User-Id検証
+X-User-Id検証
     ↓
 操作対象利用者確認
     ↓
@@ -28793,13 +28793,13 @@ target_year_month
 
 ### 31.6 users
 
-`X-Demo-User-Id`で指定された
-デモ利用者の存在確認に使用する。
+`X-User-Id`で指定された
+利用者の存在確認に使用する。
 
 主に以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -28843,7 +28843,7 @@ deleted_at IS NULL
 商品別月末評価額を
 正常に更新できること。
 
-- `X-Demo-User-Id`が正しく指定されている
+- `X-User-Id`が正しく指定されている
 - 操作対象利用者が存在する
 - `snapshotId`が正しい
 - `holdingAssetId`が正しい
@@ -28925,14 +28925,14 @@ value = 900000
 
 ### 32.4 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずにリクエストする。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 商品別月末評価額が
@@ -28942,20 +28942,20 @@ DEMO_USER_CONTEXT_REQUIRED
 
 ### 32.5 利用者ID形式不正
 
-不正な`X-Demo-User-Id`を
+不正な`X-User-Id`を
 指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 商品別月末評価額が
@@ -28966,13 +28966,13 @@ INVALID_DEMO_USER_ID
 ### 32.6 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 商品別月末評価額が
@@ -28983,13 +28983,13 @@ DEMO_USER_NOT_FOUND
 ### 32.7 論理削除済み利用者
 
 論理削除されている利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 商品別月末評価額が
@@ -29194,7 +29194,7 @@ MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
 
 ### 32.17 他利用者の月末資産状況
 
-`X-Demo-User-Id`とは
+`X-User-Id`とは
 異なる利用者に属する
 `snapshotId`を指定する。
 
@@ -29602,7 +29602,7 @@ User B
 
 を作成する。
 
-`X-Demo-User-Id`に
+`X-User-Id`に
 User Aを指定した状態で、
 User BのリソースIDを使用して
 更新を試みる。
@@ -29624,7 +29624,7 @@ HTTPリクエストを受け付け、
 月末資産状況ID、
 保有商品ID、
 更新後の商品別月末評価額および
-デモ利用者コンテキストを取得する。
+利用者コンテキストを取得する。
 
 Form Requestまたは入力用DTOから
 検証済みの入力値を受け取り、
@@ -29811,7 +29811,7 @@ Queryでは、
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->first([
         'id',
         'user_id',
@@ -29910,7 +29910,7 @@ $holdingAsset = HoldingAsset::query()
     )
     ->where(
         'asset_accounts.user_id',
-        $demoUserId,
+        $userId,
     )
     ->first([
         'holding_assets.id',
@@ -30278,7 +30278,7 @@ Phase1では、
 ```php
 $holdingValue = DB::transaction(
     function () use (
-        $demoUserId,
+        $userId,
         $snapshotId,
         $holdingAssetId,
         $input,
@@ -30286,7 +30286,7 @@ $holdingValue = DB::transaction(
         $snapshot =
             $this->snapshotQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $snapshotId,
                 );
 
@@ -30303,7 +30303,7 @@ $holdingValue = DB::transaction(
         $holdingAsset =
             $this->holdingAssetQuery
                 ->findByUserAndId(
-                    $demoUserId,
+                    $userId,
                     $holdingAssetId,
                 );
 
@@ -30423,7 +30423,7 @@ VAL-003
 ```php
 $snapshot = MonthEndAssetSnapshot::query()
     ->where('id', $snapshotId)
-    ->where('user_id', $demoUserId)
+    ->where('user_id', $userId)
     ->lockForUpdate()
     ->first();
 ```
@@ -30537,14 +30537,14 @@ return [
 
 以下の共通ミドルウェアを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONリクエスト・レスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定ミドルウェアでは、
-`X-Demo-User-Id`を検証し、
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
 操作対象利用者を特定する。
 
 Action以降では、
@@ -30694,9 +30694,9 @@ LaravelおよびPostgreSQLの
 
 | 内部状態 | 独自エラーコード |
 |---|---|
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | 入力値不正 | `VALIDATION_ERROR` |
 | 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
 | 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
@@ -31407,9 +31407,9 @@ URLとして扱う。
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 入力項目または不正な画面状態としてエラー表示する |
 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
 | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 確定済みのため更新できないことを表示する |

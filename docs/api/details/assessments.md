@@ -6,7 +6,7 @@
 目的達成判定に関するAPIの詳細仕様を定義する。
 
 目的達成判定APIでは、
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 登録されている目的と資産状況をもとに
 目的達成可否を判定する。
 
@@ -18,8 +18,8 @@
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 本API群では、
@@ -87,7 +87,7 @@ Phase1では、
 
 ### 3.1 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定された目的に対する
 目的達成判定を実行する。
 
@@ -184,12 +184,12 @@ POST
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する
@@ -309,9 +309,9 @@ users
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
-`X-Demo-User-Id`が指定されていない場合、
+`X-User-Id`が指定されていない場合、
 形式が不正な場合、
 または指定された利用者が存在しない場合は、
 API共通方針に従って
@@ -381,7 +381,7 @@ POST /api/v1/objectives/5/assessments
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -389,7 +389,7 @@ POST /api/v1/objectives/5/assessments
 ```http
 POST /api/v1/objectives/5/assessments
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIでは、
@@ -448,7 +448,7 @@ X-Demo-User-Id: 1
 `objectiveId`から特定する。
 
 操作対象利用者は、
-`X-Demo-User-Id`から取得する。
+`X-User-Id`から取得する。
 
 その他の判定材料は、
 サーバー側で
@@ -725,8 +725,8 @@ APIエラー
 APIエラーとなる代表例は、
 以下とする。
 
-- `X-Demo-User-Id`が未指定
-- `X-Demo-User-Id`の形式が不正
+- `X-User-Id`が未指定
+- `X-User-Id`の形式が不正
 - 操作対象利用者が存在しない
 - `objectiveId`の形式が不正
 - 指定された目的が存在しない
@@ -744,7 +744,7 @@ APIエラーとなる代表例は、
 
 ---
 
-#### 3.11.11 X-Demo-User-Id
+#### 3.11.11 X-User-Id
 
 以下を検証する。
 
@@ -753,17 +753,17 @@ APIエラーとなる代表例は、
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -1408,15 +1408,15 @@ APIエラーが発生した場合は、
 
 #### 3.18.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -1431,20 +1431,20 @@ APIエラーが発生した場合は、
 
 #### 3.18.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -1460,13 +1460,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -1737,8 +1737,8 @@ PostgreSQLの制約名および
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -1791,9 +1791,9 @@ PostgreSQLの制約名および
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `objectiveId`の形式が不正である | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 目的が存在しない、論理削除済み、または他利用者に属している | × |
 | `OBJECTIVE_NOT_ASSESSABLE` | 409 | 目的が現在の業務状態では判定対象外である | × |
@@ -2298,16 +2298,16 @@ LIMIT 3
 #### 3.24.9 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 概念的には、
 以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -2848,14 +2848,14 @@ OBJECTIVE_NOT_ASSESSABLE
 
 #### 3.26.23 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずに実行する。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 目的達成判定履歴が
@@ -2865,19 +2865,19 @@ DEMO_USER_CONTEXT_REQUIRED
 
 #### 3.26.24 利用者ID形式不正
 
-不正な`X-Demo-User-Id`を指定する。
+不正な`X-User-Id`を指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 目的達成判定履歴が
@@ -2888,13 +2888,13 @@ INVALID_DEMO_USER_ID
 #### 3.26.25 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 目的達成判定履歴が
@@ -2905,13 +2905,13 @@ DEMO_USER_NOT_FOUND
 #### 3.26.26 論理削除済み利用者
 
 論理削除済み利用者を
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 目的達成判定履歴が
@@ -2930,7 +2930,7 @@ User AとUser Bについて、
 - 手取り収入
 
 User Aを
-`X-Demo-User-Id`として
+`X-User-Id`として
 ASM-001を実行する。
 
 以下を確認する。
@@ -3145,9 +3145,9 @@ API共通方針で定めた
 
 以下のAPIエラーを発生させる。
 
-- `DEMO_USER_CONTEXT_REQUIRED`
-- `INVALID_DEMO_USER_ID`
-- `DEMO_USER_NOT_FOUND`
+- `USER_CONTEXT_REQUIRED`
+- `INVALID_USER_ID`
+- `USER_NOT_FOUND`
 - `VALIDATION_ERROR`
 - `OBJECTIVE_NOT_FOUND`
 - `OBJECTIVE_NOT_ASSESSABLE`
@@ -3202,7 +3202,7 @@ Actionへ目的達成判定の業務ロジックを直接記述しない。
 
 #### 3.27.1 Action
 
-HTTPリクエストを受け付け、目的IDおよびデモ利用者コンテキストを取得する。
+HTTPリクエストを受け付け、目的IDおよび利用者コンテキストを取得する。
 
 目的達成判定UseCaseを呼び出し、処理結果をResponderへ渡す。
 
@@ -3218,7 +3218,7 @@ final class ExecuteAssessmentAction
         string $objectiveId,
     ): JsonResponse {
         $assessmentHistory = $useCase->execute(
-            userId: $request->demoUserId(),
+            userId: $request->userId(),
             objectiveId: $objectiveId,
         );
 
@@ -3806,13 +3806,13 @@ Responderでは、以下を行わない。
 
 以下の共通Middlewareを適用する。
 
-* デモ利用者コンテキスト設定
+* 利用者コンテキスト設定
 * リクエストID生成
 * JSONレスポンス共通処理
 * 共通例外処理
 * ログコンテキスト設定
 
-デモ利用者コンテキスト設定Middlewareでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -4442,9 +4442,9 @@ ASM-001へ送信しない。
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたは画面状態として扱う |
 | `OBJECTIVE_NOT_FOUND` | 目的一覧画面へ戻す |
 | `OBJECTIVE_NOT_ASSESSABLE` | 現在は判定対象外であることを表示する |
@@ -4928,7 +4928,7 @@ ASM-002の一覧を
 
 ### 4.1 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定された目的に紐づく
 目的達成判定履歴の一覧を取得する。
 
@@ -5006,12 +5006,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する
@@ -5086,9 +5086,9 @@ assessment_histories.objective_id
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
-`X-Demo-User-Id`が指定されていない場合、
+`X-User-Id`が指定されていない場合、
 形式が不正な場合、
 または指定された利用者が存在しない場合は、
 API共通方針に従って
@@ -5154,7 +5154,7 @@ GET /api/v1/objectives/5/assessments?page=1&perPage=20
 
 | ヘッダー名 | 必須 | 説明 |
 | --- | :---: | --- |
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -5162,7 +5162,7 @@ GET /api/v1/objectives/5/assessments?page=1&perPage=20
 ```http
 GET /api/v1/objectives/5/assessments?page=1&perPage=20
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIはGETのため、`Content-Type`は必須としない。
@@ -5185,7 +5185,7 @@ X-Demo-User-Id: 1
 
 本APIでは、リクエストボディに業務項目を持たない。
 
-利用者IDは、`X-Demo-User-Id`から取得する。
+利用者IDは、`X-User-Id`から取得する。
 
 取得対象となる目的は、`objectiveId`から特定する。
 
@@ -5386,7 +5386,7 @@ id DESC
 
 ---
 
-#### 4.11.8 X-Demo-User-Id
+#### 4.11.8 X-User-Id
 
 以下を検証する。
 
@@ -5395,11 +5395,11 @@ id DESC
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が指定されていない場合は、`DEMO_USER_CONTEXT_REQUIRED`として扱う。
+`X-User-Id`が指定されていない場合は、`USER_CONTEXT_REQUIRED`として扱う。
 
-形式が不正な場合は、`INVALID_DEMO_USER_ID`として扱う。
+形式が不正な場合は、`INVALID_USER_ID`として扱う。
 
-指定された利用者が存在しない場合、または論理削除されている場合は、`DEMO_USER_NOT_FOUND`として扱う。
+指定された利用者が存在しない場合、または論理削除されている場合は、`USER_NOT_FOUND`として扱う。
 
 ---
 
@@ -6058,15 +6058,15 @@ data = []
 
 #### 4.17.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -6081,20 +6081,20 @@ data = []
 
 #### 4.17.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -6110,13 +6110,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -6402,8 +6402,8 @@ API処理の成否は
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -6442,9 +6442,9 @@ API処理の成否は
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `objectiveId`、`page`、`perPage`が不正である | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 目的が存在しない、論理削除済み、または他利用者に属している | × |
 | `INTERNAL_SERVER_ERROR` | 500 | 想定外のサーバーエラーが発生した | ○ |
@@ -6744,16 +6744,16 @@ ORDER BY id DESC
 #### 4.23.3 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 概念的には、
 以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -7099,7 +7099,7 @@ OBJECTIVE_NOT_FOUND
 #### 4.25.12 他利用者の目的
 
 User Aを
-`X-Demo-User-Id`として指定し、
+`X-User-Id`として指定し、
 User Bに属する
 `objectiveId`を指定する。
 
@@ -7137,14 +7137,14 @@ OBJECTIVE_NOT_FOUND
 
 #### 4.25.14 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずに実行する。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 ---
@@ -7152,19 +7152,19 @@ DEMO_USER_CONTEXT_REQUIRED
 #### 4.25.15 利用者ID形式不正
 
 不正な
-`X-Demo-User-Id`を指定する。
+`X-User-Id`を指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 ---
@@ -7172,13 +7172,13 @@ INVALID_DEMO_USER_ID
 #### 4.25.16 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -7186,13 +7186,13 @@ DEMO_USER_NOT_FOUND
 #### 4.25.17 論理削除済み利用者
 
 論理削除済み利用者を
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -7598,7 +7598,7 @@ Actionへ検索条件や業務ロジックを直接記述しない。
 
 #### 4.26.1 Action
 
-HTTPリクエストを受け付け、目的ID、ページネーション条件、デモ利用者コンテキストを取得する。
+HTTPリクエストを受け付け、目的ID、ページネーション条件、利用者コンテキストを取得する。
 
 一覧取得UseCaseを呼び出し、取得結果をResponderへ渡す。
 
@@ -7614,7 +7614,7 @@ final class ListAssessmentHistoriesAction
         string $objectiveId,
     ): JsonResponse {
         $result = $useCase->execute(
-            userId: $request->demoUserId(),
+            userId: $request->userId(),
             objectiveId: (int) $objectiveId,
             page: $request->integer(
                 'page',
@@ -7702,7 +7702,7 @@ final class ListAssessmentHistoriesRequest
 }
 ```
 
-`X-Demo-User-Id`の検証および操作対象利用者コンテキストの生成は、API共通Middlewareで行う。
+`X-User-Id`の検証および操作対象利用者コンテキストの生成は、API共通Middlewareで行う。
 
 Requestでは、以下を行わない。
 
@@ -8356,13 +8356,13 @@ Responderは、取得済みの一覧結果をHTTPレスポンスへ変換する�
 
 以下の共通Middlewareを適用する。
 
-* デモ利用者コンテキスト設定
+* 利用者コンテキスト設定
 * リクエストID生成
 * JSONレスポンス共通処理
 * 共通例外処理
 * ログコンテキスト設定
 
-デモ利用者コンテキスト設定Middlewareでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -9108,9 +9108,9 @@ ASM-003によって
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたはページネーション状態として扱う |
 | `OBJECTIVE_NOT_FOUND` | 目的一覧画面へ戻す |
 | `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
@@ -9473,7 +9473,7 @@ ASM-002専用の
 
 ### 5.1 概要
 
-操作対象となるデモ利用者について、
+操作対象となる利用者について、
 指定された目的に紐づく
 特定の目的達成判定履歴を取得する。
 
@@ -9558,12 +9558,12 @@ GET
 Phase1では、
 認証機能を実装しない。
 
-操作対象となるデモ利用者は、
-`X-Demo-User-Id`
+操作対象となる利用者は、
+`X-User-Id`
 リクエストヘッダーで指定する。
 
 ```http
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 指定された利用者に属する
@@ -9673,9 +9673,9 @@ assessment_histories.id = assessmentId
 
 利用者IDは、
 ミドルウェアで設定された
-デモ利用者コンテキストから取得する。
+利用者コンテキストから取得する。
 
-`X-Demo-User-Id`が指定されていない場合、
+`X-User-Id`が指定されていない場合、
 形式が不正な場合、
 または指定された利用者が存在しない場合は、
 API共通方針に従って
@@ -9758,7 +9758,7 @@ assessmentId
 
 | ヘッダー名 | 必須 | 説明 |
 |---|:---:|---|
-| `X-Demo-User-Id` | ○ | 操作対象となるデモ利用者ID |
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
 | `Accept` | ○ | `application/json`を指定する |
 
 リクエスト例：
@@ -9766,7 +9766,7 @@ assessmentId
 ```http
 GET /api/v1/objectives/5/assessments/20
 Accept: application/json
-X-Demo-User-Id: 1
+X-User-Id: 1
 ```
 
 本APIはGETのため、
@@ -9799,13 +9799,13 @@ X-Demo-User-Id: 1
 業務項目を持たない。
 
 利用者IDは、
-`X-Demo-User-Id`から取得する。
+`X-User-Id`から取得する。
 
 取得対象は、
 以下の組み合わせによって特定する。
 
 ```text
-X-Demo-User-Id
+X-User-Id
 +
 objectiveId
 +
@@ -10025,7 +10025,7 @@ assessment_histories.objective_id = 5
 以下の順序で保証する。
 
 ```text
-X-Demo-User-Id
+X-User-Id
     ↓
 objectives.id = objectiveId
 AND
@@ -10093,7 +10093,7 @@ ASM-003では、
 
 ---
 
-#### 5.11.9 X-Demo-User-Id
+#### 5.11.9 X-User-Id
 
 以下を検証する。
 
@@ -10102,19 +10102,19 @@ ASM-003では、
 - 指定された利用者が存在すること
 - 指定された利用者が論理削除されていないこと
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 として扱う。
 
 形式が不正な場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 として扱う。
 
 指定された利用者が
 存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 として扱う。
 
 ---
@@ -10199,7 +10199,7 @@ assessment_histories.objective_id = objectiveId
 所属する目的を経由して確認する。
 
 ```text
-X-Demo-User-Id
+X-User-Id
     ↓
 objectives.id = objectiveId
 AND
@@ -10733,15 +10733,15 @@ APIエラーとして扱わない。
 
 #### 5.17.1 利用者コンテキストが指定されていない場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 指定されていない場合は、
-`DEMO_USER_CONTEXT_REQUIRED`
+`USER_CONTEXT_REQUIRED`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_CONTEXT_REQUIRED",
+    "code": "USER_CONTEXT_REQUIRED",
     "message": "操作対象の利用者を指定してください。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -10756,20 +10756,20 @@ APIエラーとして扱わない。
 
 #### 5.17.2 利用者ID形式が不正な場合
 
-`X-Demo-User-Id`が
+`X-User-Id`が
 API共通方針で定めたID形式に
 一致しない場合は、
-`INVALID_DEMO_USER_ID`
+`INVALID_USER_ID`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "INVALID_DEMO_USER_ID",
+    "code": "INVALID_USER_ID",
     "message": "利用者IDの形式が不正です。",
     "details": [
       {
-        "field": "X-Demo-User-Id",
+        "field": "X-User-Id",
         "reason": "invalidFormat",
         "message": "利用者IDの形式を確認してください。"
       }
@@ -10785,13 +10785,13 @@ API共通方針で定めたID形式に
 
 指定された利用者が存在しない場合、
 または論理削除されている場合は、
-`DEMO_USER_NOT_FOUND`
+`USER_NOT_FOUND`
 を返却する。
 
 ```json
 {
   "error": {
-    "code": "DEMO_USER_NOT_FOUND",
+    "code": "USER_NOT_FOUND",
     "message": "指定された利用者が見つかりません。",
     "details": [],
     "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
@@ -11070,8 +11070,8 @@ unassessable
 `400 Bad Request`
 を返却する。
 
-- `X-Demo-User-Id`が指定されていない
-- `X-Demo-User-Id`の形式が不正である
+- `X-User-Id`が指定されていない
+- `X-User-Id`の形式が不正である
 
 ---
 
@@ -11107,9 +11107,9 @@ unassessable
 
 | エラーコード | HTTPステータス | 条件 | 再試行 |
 |---|---:|---|:---:|
-| `DEMO_USER_CONTEXT_REQUIRED` | 400 | `X-Demo-User-Id`が指定されていない | × |
-| `INVALID_DEMO_USER_ID` | 400 | 利用者IDの形式が不正である | × |
-| `DEMO_USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
+| `USER_CONTEXT_REQUIRED` | 400 | `X-User-Id`が指定されていない | × |
+| `INVALID_USER_ID` | 400 | 利用者IDの形式が不正である | × |
+| `USER_NOT_FOUND` | 404 | 指定された利用者が存在しない、または論理削除されている | × |
 | `VALIDATION_ERROR` | 422 | `objectiveId`または`assessmentId`が不正である | × |
 | `OBJECTIVE_NOT_FOUND` | 404 | 目的が存在しない、論理削除済み、または他利用者に属している | × |
 | `ASSESSMENT_HISTORY_NOT_FOUND` | 404 | 目的達成判定履歴が存在しない、または指定目的に紐づいていない | × |
@@ -11395,16 +11395,16 @@ objective_id = objectiveId
 #### 5.23.3 users
 
 操作対象となる
-デモ利用者を保持する。
+利用者を保持する。
 
-`X-Demo-User-Id`で指定された利用者が
+`X-User-Id`で指定された利用者が
 存在することを確認するために参照する。
 
 概念的には、
 以下を確認する。
 
 ```text
-id = X-Demo-User-Id
+id = X-User-Id
 AND
 deleted_at IS NULL
 ```
@@ -11698,7 +11698,7 @@ OBJECTIVE_NOT_FOUND
 #### 5.25.9 他利用者の目的
 
 User Aを
-`X-Demo-User-Id`として指定し、
+`X-User-Id`として指定し、
 User Bに属する
 `objectiveId`を指定する。
 
@@ -11804,14 +11804,14 @@ User Bの履歴が
 
 #### 5.25.14 利用者コンテキスト未指定
 
-`X-Demo-User-Id`を
+`X-User-Id`を
 指定せずに実行する。
 
 期待結果：
 
 ```text
 400 Bad Request
-DEMO_USER_CONTEXT_REQUIRED
+USER_CONTEXT_REQUIRED
 ```
 
 ---
@@ -11819,19 +11819,19 @@ DEMO_USER_CONTEXT_REQUIRED
 #### 5.25.15 利用者ID形式不正
 
 不正な
-`X-Demo-User-Id`を指定する。
+`X-User-Id`を指定する。
 
 例：
 
 ```http
-X-Demo-User-Id: abc
+X-User-Id: abc
 ```
 
 期待結果：
 
 ```text
 400 Bad Request
-INVALID_DEMO_USER_ID
+INVALID_USER_ID
 ```
 
 ---
@@ -11839,13 +11839,13 @@ INVALID_DEMO_USER_ID
 #### 5.25.16 利用者不存在
 
 存在しない利用者IDを
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -11853,13 +11853,13 @@ DEMO_USER_NOT_FOUND
 #### 5.25.17 論理削除済み利用者
 
 論理削除済み利用者を
-`X-Demo-User-Id`へ指定する。
+`X-User-Id`へ指定する。
 
 期待結果：
 
 ```text
 404 Not Found
-DEMO_USER_NOT_FOUND
+USER_NOT_FOUND
 ```
 
 ---
@@ -12188,7 +12188,7 @@ Responder
 
 #### 5.26.1 Action
 
-HTTPリクエストを受け付け、目的ID、目的達成判定履歴IDおよびデモ利用者コンテキストを取得する。
+HTTPリクエストを受け付け、目的ID、目的達成判定履歴IDおよび利用者コンテキストを取得する。
 
 目的達成判定履歴詳細取得UseCaseを呼び出し、取得結果をResponderへ渡す。
 
@@ -12205,7 +12205,7 @@ final class ShowAssessmentHistoryAction
         string $assessmentId,
     ): JsonResponse {
         $assessmentHistory = $useCase->execute(
-            userId: $request->demoUserId(),
+            userId: $request->userId(),
             objectiveId: (int) $objectiveId,
             assessmentId: (int) $assessmentId,
         );
@@ -12853,13 +12853,13 @@ Responderは、取得済みリソースをHTTPレスポンス形式へ変換す�
 
 以下の共通Middlewareを適用する。
 
-- デモ利用者コンテキスト設定
+- 利用者コンテキスト設定
 - リクエストID生成
 - JSONレスポンス共通処理
 - 共通例外処理
 - ログコンテキスト設定
 
-デモ利用者コンテキスト設定Middlewareでは、`X-Demo-User-Id`を検証し、操作対象利用者を特定する。
+利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証し、操作対象利用者を特定する。
 
 Action以降では、検証済みの利用者コンテキストを使用する。
 
@@ -12972,9 +12972,9 @@ Laravel内部例外は、そのままAPIレスポンスへ公開しない。
 
 | 内部状態 | 独自エラーコード |
 | --- | --- |
-| 利用者未指定 | `DEMO_USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_DEMO_USER_ID` |
-| 利用者不存在 | `DEMO_USER_NOT_FOUND` |
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
 | `objectiveId`形式不正 | `VALIDATION_ERROR` |
 | `assessmentId`形式不正 | `VALIDATION_ERROR` |
 | 目的不存在 | `OBJECTIVE_NOT_FOUND` |
@@ -13600,9 +13600,9 @@ ASM-002の
 
 | エラーコード | フロントエンドの扱い |
 |---|---|
-| `DEMO_USER_CONTEXT_REQUIRED` | デモ利用者の選択を促す |
-| `INVALID_DEMO_USER_ID` | 共通エラー表示を行う |
-| `DEMO_USER_NOT_FOUND` | デモ利用者選択画面へ戻す |
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
 | `VALIDATION_ERROR` | 不正なURLまたは画面状態として扱う |
 | `OBJECTIVE_NOT_FOUND` | 目的一覧画面へ戻す |
 | `ASSESSMENT_HISTORY_NOT_FOUND` | 目的達成判定履歴一覧画面へ戻す |
