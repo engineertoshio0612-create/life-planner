@@ -113,12 +113,12 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| OBJ-001 | 目的 | 目的一覧取得 | GET | `/api/v1/objectives` | 操作対象利用者の目的一覧を取得する | `objectives` | 10.5 一覧表示 | [OBJ-001](./details/objectives.md#obj-001-目的一覧取得) |
-| OBJ-002 | 目的 | 目的登録 | POST | `/api/v1/objectives` | 目的名、実施予定年月、必要支出額などを登録する | `objectives` | 10.2 登録 | [OBJ-002](./details/objectives.md#obj-002-目的登録) |
-| OBJ-003 | 目的 | 目的詳細取得 | GET | `/api/v1/objectives/{objectiveId}` | 指定した目的の詳細を取得する | `objectives` | 10. 目的管理 | [OBJ-003](./details/objectives.md#obj-003-目的詳細取得) |
-| OBJ-004 | 目的 | 目的更新 | PATCH | `/api/v1/objectives/{objectiveId}` | 目的情報を更新する | `objectives` | 10.3 編集 | [OBJ-004](./details/objectives.md#obj-004-目的更新) |
-| OBJ-005 | 目的 | 目的無効化 | PATCH | `/api/v1/objectives/{objectiveId}/disabled` | 指定した目的を無効化する | `objectives` | 10.4 無効化 | [OBJ-005](./details/objectives.md#obj-005-目的無効化) |
-| OBJ-006 | 目的 | 目的達成判定 | POST | `/api/v1/objectives/{objectiveId}/assessments` | 指定した目的の達成可否を判定し、判定履歴を登録する | `objectives`、`assessment_histories`、`month_end_asset_snapshots`、`net_incomes` | 11. 目的達成判定 | [OBJ-006](./details/objectives.md#obj-006-目的達成判定) |
+| OBJ-001 | 目的 | 目的一覧取得 | GET | `/api/v1/objectives` | 操作対象利用者の目的一覧を取得する | `objectives` | 10.5 一覧表示 | [OBJ-001](./details/objectives/obj-001-list.md) |
+| OBJ-002 | 目的 | 目的登録 | POST | `/api/v1/objectives` | 目的名、実施予定年月、必要支出額などを登録する | `objectives` | 10.2 登録 | [OBJ-002](./details/objectives/obj-002-create.md) |
+| OBJ-003 | 目的 | 目的詳細取得 | GET | `/api/v1/objectives/{objectiveId}` | 指定した目的の詳細を取得する | `objectives` | 10. 目的管理 | [OBJ-003](./details/objectives/obj-003-detail.md) |
+| OBJ-004 | 目的 | 目的更新 | PATCH | `/api/v1/objectives/{objectiveId}` | 目的情報を更新する | `objectives` | 10.3 編集 | [OBJ-004](./details/objectives/obj-004-update.md) |
+| OBJ-005 | 目的 | 目的無効化 | PATCH | `/api/v1/objectives/{objectiveId}/disabled` | 指定した目的を無効化する | `objectives` | 10.4 無効化 | [OBJ-005](./details/objectives/obj-005-assessments.md) |
+| OBJ-006 | 目的 | 目的達成判定 | POST | `/api/v1/objectives/{objectiveId}/assessments` | 指定した目的の達成可否を判定し、判定履歴を登録する | `objectives`、`assessment_histories`、`month_end_asset_snapshots`、`net_incomes` | 11. 目的達成判定 | [OBJ-006](./details/objectives/obj-006-disabled.md) |
 
 ---
 
@@ -126,7 +126,7 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| SNP-001 | 月末資産状況 | 月末資産状況一覧取得 | GET | `/api/v1/month-end-asset-snapshots` | 対象年月ごとの確定状態、登録済み件数、未登録件数などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.11 一覧表示 | [SNP-001](./details/month-end-assets.md#snp-001-月末資産状況一覧取得) |
+| SNP-001 | 月末資産状況 | 月末資産状況一覧取得 | GET | `/api/v1/month-end-asset-snapshots` | 対象年月ごとの確定状態、登録済み件数、未登録件数などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.11 一覧表示 | [SNP-001](./docs/api/details/objectives/obj-001-list.md) |
 | SNP-002 | 月末資産状況 | 月末資産状況作成 | POST | `/api/v1/month-end-asset-snapshots` | 指定した対象年月の未確定な月末資産状況を作成する | `month_end_asset_snapshots` | 6.3 対象年月、7.2 確定対象 | [SNP-002](./details/month-end-assets.md#snp-002-月末資産状況作成) |
 | SNP-003 | 月末資産状況 | 月末資産状況詳細取得 | GET | `/api/v1/month-end-asset-snapshots/{snapshotId}` | 月末資産状況、登録済み残高、未登録資産などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_accounts`、`holding_assets` | 7.4 確定順序、7.5 未登録資産の表示、7.11 一覧表示 | [SNP-003](./details/month-end-assets.md#snp-003-月末資産状況詳細取得) |
 | SNP-004 | 月末資産状況 | 月末資産状況確定 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/confirm` | 確定条件を検証し、対象年月の月末資産状況を確定する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.3 確定条件、7.4 確定順序、7.6 確定 | [SNP-004](./details/month-end-assets.md#snp-004-月末資産状況確定) |
