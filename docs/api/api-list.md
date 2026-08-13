@@ -105,7 +105,7 @@ API詳細設計書、
 | INC-002 | 手取り収入 | 手取り収入登録 | POST | `/api/v1/net-incomes` | 対象年月の手取り収入を登録する | `net_incomes` | 9.2 登録 | [INC-002](./details/net-incomes/inc-002-create.md) |
 | INC-003 | 手取り収入 | 手取り収入詳細取得 | GET | `/api/v1/net-incomes/{netIncomeId}` | 指定した手取り収入の詳細を取得する | `net_incomes` | 9. 手取り収入管理 | [INC-003](./details/net-incomes/inc-003-detail.md) |
 | INC-004 | 手取り収入 | 手取り収入更新 | PATCH | `/api/v1/net-incomes/{netIncomeId}` | 手取り収入および備考を更新する | `net_incomes` | 9.3 編集 | [INC-004](./details/net-incomes/inc-004-update.md) |
-| INC-005 | 手取り収入 | 平均手取り収入取得 | GET | `/api/v1/net-incomes/average` | 指定した判定対象年月以前の連続する3か月の平均手取り収入を取得する | `net_incomes` | 9.6 平均手取り収入、9.7 判定対象、9.8 データ不足 | [INC-005](./details/net-incomes/inc-005-average.md) |
+| INC-005 | 手取り収入 | 平均手取り収入取得 | GET | `/api/v1/net-incomes/average` | 指定した判定対象年月以前の連続する3か月の平均手取り収入を取得する | `net_incomes` | 9.5 平均手取り収入、9.6 判定対象、9.7 データ不足 | [INC-005](./details/net-incomes/inc-005-average.md) |
 
 ---
 
@@ -117,7 +117,7 @@ API詳細設計書、
 | OBJ-002 | 目的 | 目的登録 | POST | `/api/v1/objectives` | 目的名、実施予定年月、必要支出額などを登録する | `objectives` | 10.2 登録 | [OBJ-002](./details/objectives.md#obj-002-目的登録) |
 | OBJ-003 | 目的 | 目的詳細取得 | GET | `/api/v1/objectives/{objectiveId}` | 指定した目的の詳細を取得する | `objectives` | 10. 目的管理 | [OBJ-003](./details/objectives.md#obj-003-目的詳細取得) |
 | OBJ-004 | 目的 | 目的更新 | PATCH | `/api/v1/objectives/{objectiveId}` | 目的情報を更新する | `objectives` | 10.3 編集 | [OBJ-004](./details/objectives.md#obj-004-目的更新) |
-| OBJ-005 | 目的 | 目的無効化 | PATCH | `/api/v1/objectives/{objectiveId}` | 指定した目的を無効化する | `objectives` | 10.4 無効化 | [OBJ-005](./details/objectives.md#obj-005-目的無効化) |
+| OBJ-005 | 目的 | 目的無効化 | PATCH | `/api/v1/objectives/{objectiveId}/disabled` | 指定した目的を無効化する | `objectives` | 10.4 無効化 | [OBJ-005](./details/objectives.md#obj-005-目的無効化) |
 | OBJ-006 | 目的 | 目的達成判定 | POST | `/api/v1/objectives/{objectiveId}/assessments` | 指定した目的の達成可否を判定し、判定履歴を登録する | `objectives`、`assessment_histories`、`month_end_asset_snapshots`、`net_incomes` | 11. 目的達成判定 | [OBJ-006](./details/objectives.md#obj-006-目的達成判定) |
 
 ---
