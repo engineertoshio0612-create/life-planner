@@ -1,0 +1,4438 @@
+# VAL-003 商品別月末評価額更新
+
+## 1. 概要
+
+操作対象となる利用者について、
+指定した月末資産状況に紐づく
+既存の商品別月末評価額を更新する。
+
+本APIでは、
+残高記録単位が
+商品単位である資産口座に属する
+保有商品について、
+登録済みの月末評価額を変更する。
+
+商品別月末評価額が
+まだ登録されていない場合は、
+本APIでは新規登録しない。
+
+新しい商品別月末評価額を登録する場合は、
+VAL-002 商品別月末評価額登録APIを使用する。
+
+口座単位で残高を記録する資産口座については、
+本APIでは更新しない。
+
+資産口座単位の月末資産残高の更新は、
+BAL-003 月末資産残高更新APIを使用する。
+
+---
+
+## 2. ユースケース
+
+利用者は、
+指定した月末資産状況に登録済みの
+商品別月末評価額を修正する。
+
+例えば、
+以下のような場合に使用する。
+
+- 投資信託の入力済み月末評価額を修正する
+- 株式の入力済み月末評価額を修正する
+- ETFなどの入力済み月末評価額を修正する
+- 誤って入力した商品別月末評価額を訂正する
+- 登録済みの評価額を0円へ変更する
+
+月末資産状況が
+確定済みの場合は、
+本APIで商品別月末評価額を更新できない。
+
+確定済みの商品別月末評価額を修正する場合は、
+SNP-005 月末資産状況確定解除APIによって
+確定解除した後に更新する。
+
+---
+
+## 3. エンドポイント
+
+```http
+PATCH /api/v1/month-end-asset-snapshots/{snapshotId}/holding-values/{holdingAssetId}
+```
+
+---
+
+## 4. HTTPメソッド
+
+```text
+PATCH
+```
+
+本APIは、指定した月末資産状況および保有商品に紐づく既存の商品別月末評価額を更新する。
+
+商品別月末評価額の新規登録、月末資産残高の登録・更新、月末資産状況の確定および確定解除は行わない。
+
+---
+
+## 5. 認証・利用者の扱い
+
+Phase1では、認証機能を実装しない。
+
+操作対象となる利用者は、`X-User-Id`リクエストヘッダーで指定する。
+
+```http
+X-User-Id: 1
+```
+
+指定された利用者に属する月末資産状況についてのみ、商品別月末評価額を更新できる。
+
+他の利用者に属する月末資産状況の商品別月末評価額を更新することはできない。
+
+月末資産状況を取得する際は、必ず以下を検索条件に含める。
+
+```text
+id = snapshotId
+AND
+user_id = 操作対象利用者ID
+```
+
+指定された`snapshotId`が他の利用者に属する場合は、対象となる月末資産状況が存在しないものとして扱う。
+
+更新対象となる保有商品についても、操作対象利用者に属する資産口座を経由して利用者境界を確認する。
+
+保有商品を取得する場合は、少なくとも以下の関連を満たすことを確認する。
+
+```text
+holding_assets.id = holdingAssetId
+AND
+holding_assets.asset_account_id = asset_accounts.id
+AND
+asset_accounts.user_id = 操作対象利用者ID
+```
+
+他の利用者に属する資産口座の保有商品について、商品別月末評価額を更新することはできない。
+
+指定された`holdingAssetId`が他の利用者に属する場合は、対象となる保有商品が存在しないものとして扱う。
+
+更新対象となる商品別月末評価額は、以下の組み合わせで特定する。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+ただし、月末資産状況および保有商品について事前に利用者境界を確認し、操作対象利用者に属するリソースであることを保証したうえで取得する。
+
+商品別月末評価額自体には`user_id`を保持せず、
+
+```text
+month_end_holding_values
+    ↓
+month_end_asset_snapshots
+    ↓
+users
+```
+
+および
+
+```text
+month_end_holding_values
+    ↓
+holding_assets
+    ↓
+asset_accounts
+    ↓
+users
+```
+
+の関連から利用者境界を保証する。
+
+利用者IDは、リクエストボディ、クエリパラメータまたはパスパラメータでは受け付けない。
+
+利用者IDは、ミドルウェアで設定された利用者コンテキストから取得する。
+
+`X-User-Id`が指定されていない場合、形式が不正な場合、または指定された利用者が存在しない場合は、API共通方針に従ってエラーを返却する。
+
+本APIでは、他の利用者に属する以下のリソースの存在をレスポンスから推測できないようにする。
+
+- 月末資産状況
+- 資産口座
+- 保有商品
+- 商品別月末評価額
+
+---
+
+## 6. パスパラメータ
+
+| パラメータ名 | 型 | 必須 | 説明 |
+|---|---|:---:|---|
+| `snapshotId` | string | ○ | 商品別月末評価額が属する月末資産状況ID |
+| `holdingAssetId` | string | ○ | 更新対象となる保有商品ID |
+
+リクエスト例：
+
+```http
+PATCH /api/v1/month-end-asset-snapshots/12/holding-values/5
+```
+
+`snapshotId`は、
+商品別月末評価額が属する
+月末資産状況を一意に識別するIDである。
+
+`holdingAssetId`は、
+更新対象となる商品別月末評価額に紐づく
+保有商品を一意に識別するIDである。
+
+更新対象の商品別月末評価額は、
+以下の組み合わせによって特定する。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+商品別月末評価額の内部IDは、
+パスパラメータとして使用しない。
+
+---
+
+## 7. クエリパラメータ
+
+なし。
+
+本APIでは、
+クエリパラメータを使用しない。
+
+---
+
+## 8. リクエストヘッダー
+
+### 8.1 必須ヘッダー
+
+| ヘッダー名 | 必須 | 説明 |
+|---|:---:|---|
+| `X-User-Id` | ○ | 操作対象となる利用者ID |
+| `Content-Type` | ○ | `application/json`を指定する |
+| `Accept` | ○ | `application/json`を指定する |
+
+リクエスト例：
+
+```http
+PATCH /api/v1/month-end-asset-snapshots/12/holding-values/5
+Content-Type: application/json
+Accept: application/json
+X-User-Id: 1
+```
+
+---
+
+## 9. リクエストボディ
+
+リクエストボディは、
+JSON形式とする。
+
+```json
+{
+  "value": 900000
+}
+```
+
+0円へ更新する場合：
+
+```json
+{
+  "value": 0
+}
+```
+
+更新対象となる保有商品は、
+パスパラメータの
+`holdingAssetId`で指定する。
+
+そのため、
+リクエストボディに
+`holdingAssetId`は含めない。
+
+---
+
+## 10. リクエスト項目
+
+| 項目 | 型 | 必須 | NULL | 説明 |
+|---|---|:---:|:---:|---|
+| `value` | integer | ○ | × | 更新後の商品別月末評価額。日本円の整数値 |
+
+`value`は、
+日本円の整数値として受け付ける。
+
+商品別月末評価額を
+0円へ変更する場合は、
+`0`を指定できる。
+
+```json
+{
+  "value": 0
+}
+```
+
+`null`は、
+商品別月末評価額の削除や
+未登録状態への変更を意味しない。
+
+そのため、
+本APIでは`null`を受け付けない。
+
+商品別月末評価額を
+未登録状態へ戻すための削除処理は、
+本APIの責務に含めない。
+
+---
+
+## 11. バリデーション
+
+### 11.1 snapshotId
+
+`snapshotId`は、
+必須のパスパラメータとする。
+
+以下を検証する。
+
+- 指定されていること
+- API共通方針で定めたID形式であること
+- 正の整数として扱えること
+
+正常例：
+
+```text
+1
+12
+123
+```
+
+不正例：
+
+```text
+0
+-1
+abc
+1.5
+```
+
+`snapshotId`の形式が不正な場合は、
+`VALIDATION_ERROR`
+として扱う。
+
+---
+
+### 11.2 holdingAssetId
+
+`holdingAssetId`は、
+必須のパスパラメータとする。
+
+以下を検証する。
+
+- 指定されていること
+- API共通方針で定めたID形式であること
+- 正の整数として扱えること
+
+正常例：
+
+```text
+1
+5
+123
+```
+
+不正例：
+
+```text
+0
+-1
+abc
+1.5
+```
+
+`holdingAssetId`の形式が不正な場合は、
+`VALIDATION_ERROR`
+として扱う。
+
+---
+
+### 11.3 value
+
+`value`は、
+必須項目とする。
+
+以下を検証する。
+
+- 指定されていること
+- `null`ではないこと
+- 整数であること
+- 0以上であること
+- 金額カラムで保持可能な範囲であること
+
+正常例：
+
+```json
+{
+  "value": 900000
+}
+```
+
+```json
+{
+  "value": 0
+}
+```
+
+不正例：
+
+```json
+{
+  "value": null
+}
+```
+
+```json
+{
+  "value": -1
+}
+```
+
+```json
+{
+  "value": 100.5
+}
+```
+
+```json
+{
+  "value": "900000"
+}
+```
+
+商品別月末評価額は、
+日本円の整数値として扱うため、
+小数値は受け付けない。
+
+JSON文字列として送信された金額を
+暗黙的に整数へ変換しない。
+
+`value = 0`は、
+有効な更新値として扱う。
+
+---
+
+### 11.4 月末資産状況の存在確認
+
+指定された`snapshotId`について、
+以下の条件を満たす
+月末資産状況が存在することを確認する。
+
+```text
+id = snapshotId
+AND
+user_id = 操作対象利用者ID
+```
+
+対象となる月末資産状況が
+存在しない場合は、
+`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
+として扱う。
+
+他の利用者に属する
+月末資産状況IDが指定された場合も、
+同じエラーとして扱う。
+
+これにより、
+他の利用者に属する
+月末資産状況の存在を
+レスポンスから判別できないようにする。
+
+---
+
+### 11.5 月末資産状況の確定状態
+
+指定された月末資産状況が
+未確定であることを確認する。
+
+```text
+confirmed = false
+    → 更新可能
+
+confirmed = true
+    → 更新不可
+```
+
+確定済みの場合は、
+商品別月末評価額を更新しない。
+
+確定済みの月末資産状況を
+修正する場合は、
+SNP-005 月末資産状況確定解除APIによって
+確定解除した後に更新する。
+
+確定済みの場合は、
+`MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
+として扱う。
+
+---
+
+### 11.6 保有商品の存在確認
+
+指定された`holdingAssetId`について、
+操作対象利用者に属する
+保有商品が存在することを確認する。
+
+保有商品単体ではなく、
+所属する資産口座を経由して
+利用者境界を確認する。
+
+概念的には、
+以下の条件とする。
+
+```text
+holding_assets.id = holdingAssetId
+AND
+holding_assets.asset_account_id = asset_accounts.id
+AND
+asset_accounts.user_id = 操作対象利用者ID
+```
+
+対象となる保有商品が
+存在しない場合は、
+`HOLDING_ASSET_NOT_FOUND`
+として扱う。
+
+他の利用者に属する
+保有商品が指定された場合も、
+同じエラーとして扱う。
+
+これにより、
+他の利用者に属する
+保有商品の存在を
+レスポンスから判別できないようにする。
+
+---
+
+### 11.7 商品別月末評価額の存在確認
+
+指定された月末資産状況および
+保有商品の組み合わせについて、
+商品別月末評価額が
+すでに登録されていることを確認する。
+
+確認条件は、
+以下とする。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+商品別月末評価額が
+存在する場合のみ、
+更新可能とする。
+
+```text
+登録済み
+    → VAL-003で更新
+
+未登録
+    → VAL-003では更新不可
+```
+
+商品別月末評価額が
+存在しない場合は、
+`MONTH_END_HOLDING_VALUE_NOT_FOUND`
+として扱う。
+
+未登録の商品別月末評価額を
+新しく作成する場合は、
+VAL-002 商品別月末評価額登録APIを使用する。
+
+本APIでは、
+対象レコードが存在しない場合に
+新規レコードを自動作成しない。
+
+---
+
+### 11.8 資産口座の残高記録単位
+
+更新対象となる保有商品が属する
+資産口座について、
+残高記録単位が
+商品単位であることを確認する。
+
+```text
+balance_recording_unit = 商品単位
+    → 更新可能
+
+balance_recording_unit = 口座単位
+    → 更新不可
+```
+
+口座単位で残高を記録する
+資産口座については、
+商品別月末評価額を更新できない。
+
+口座単位の月末資産残高は、
+BAL-003 月末資産残高更新APIを使用する。
+
+残高記録単位が
+商品単位ではない場合は、
+業務ルール違反として扱う。
+
+---
+
+### 11.9 対象年月時点の資産口座
+
+更新対象となる保有商品が属する
+資産口座について、
+月末資産状況の
+`target_year_month`時点で
+月末資産管理対象であることを確認する。
+
+判定には、
+`asset_account_available_settings`
+を使用する。
+
+概念的には、
+以下を判定する。
+
+```text
+asset_account_id
++
+snapshot.target_year_month
+    ↓
+対象年月時点で月末資産管理対象か
+```
+
+対象年月時点で
+月末資産管理対象ではない資産口座に属する
+商品別月末評価額は、
+本APIでは更新できない。
+
+現在の資産口座の状態だけを使用して、
+過去月の更新可否を
+判定してはならない。
+
+---
+
+### 11.10 対象年月時点の保有商品
+
+指定された保有商品が、
+月末資産状況の
+`target_year_month`時点で
+評価額記録対象であることを確認する。
+
+```text
+対象年月時点で評価額記録対象
+    → 更新可能
+
+対象年月時点で評価額記録対象外
+    → 更新不可
+```
+
+現在の保有商品の状態だけを使用して、
+過去月の更新可否を
+判定してはならない。
+
+例えば、
+現在は無効化されている保有商品でも、
+対象年月時点で
+評価額記録対象であった場合は、
+既存の商品別月末評価額を更新できる。
+
+反対に、
+現在は有効であっても、
+対象年月時点で
+評価額記録対象ではなかった場合は、
+更新できない。
+
+---
+
+### 11.11 同一値への更新
+
+リクエストされた`value`が、
+現在登録されている
+商品別月末評価額と同じ場合も、
+正常な更新要求として受け付ける。
+
+例えば、
+
+```text
+現在値
+value = 900000
+
+リクエスト
+value = 900000
+```
+
+の場合も、
+エラーとはしない。
+
+更新後の業務状態は変化しない。
+
+Phase1では、
+「現在値と同じであること」を理由とした
+専用エラーは定義しない。
+
+---
+
+### 11.12 0円への更新
+
+`value = 0`は、
+有効な商品別月末評価額として扱う。
+
+```json
+{
+  "value": 0
+}
+```
+
+これは、
+商品別月末評価額の削除や
+未登録状態への変更とは異なる。
+
+```text
+商品別月末評価額レコードあり
+value = 0
+    → 0円として登録済み
+```
+
+0円を
+未入力または未登録として
+扱ってはならない。
+
+---
+
+### 11.13 X-User-Id
+
+以下を検証する。
+
+- 指定されていること
+- API共通方針で定めたID形式であること
+- 指定された利用者が存在すること
+- 指定された利用者が論理削除されていないこと
+
+`X-User-Id`が指定されていない場合は、
+`USER_CONTEXT_REQUIRED`
+として扱う。
+
+形式が不正な場合は、
+`INVALID_USER_ID`
+として扱う。
+
+指定された利用者が存在しない場合、
+または論理削除されている場合は、
+`USER_NOT_FOUND`
+として扱う。
+
+---
+
+### 11.14 不要なリクエスト項目
+
+本APIでは、
+以下の項目をリクエストボディから
+受け付けない。
+
+- `id`
+- `userId`
+- `snapshotId`
+- `holdingAssetId`
+- `assetAccountId`
+- `targetYearMonth`
+- `confirmed`
+- `createdAt`
+- `updatedAt`
+
+`snapshotId`および
+`holdingAssetId`は、
+パスパラメータから取得する。
+
+`userId`は、
+利用者コンテキストから取得する。
+
+その他の値は、
+既存リソースとの関連または
+サーバー側の処理によって決定する。
+
+クライアントから
+任意に指定させない。
+
+---
+
+### 11.15 業務状態に依存する検証
+
+以下は、
+単項目バリデーションではなく、
+業務ルールとして検証する。
+
+- 月末資産状況が操作対象利用者に属していること
+- 月末資産状況が未確定であること
+- 保有商品が操作対象利用者に属する資産口座のものであること
+- 商品別月末評価額が登録済みであること
+- 資産口座の残高記録単位が商品単位であること
+- 資産口座が対象年月時点で月末資産管理対象であること
+- 保有商品が対象年月時点で評価額記録対象であること
+
+これらの業務ルールに違反した場合は、
+入力形式の不正を表す
+`VALIDATION_ERROR`とは区別して扱う。
+
+---
+
+## 12. 業務ルール
+
+- 商品別月末評価額は、操作対象利用者に属する月末資産状況についてのみ更新できる。
+- 他の利用者に属する月末資産状況の商品別月末評価額は更新できない。
+- 更新対象となる保有商品は、操作対象利用者に属する資産口座の保有商品である必要がある。
+- 他の利用者に属する資産口座の保有商品について、商品別月末評価額を更新できない。
+- 月末資産状況が未確定の場合のみ更新できる。
+- 確定済みの月末資産状況に紐づく商品別月末評価額は更新できない。
+- 確定済みの商品別月末評価額を修正する場合は、SNP-005 月末資産状況確定解除APIによって確定解除した後に更新する。
+- 更新対象となる商品別月末評価額が登録済みである必要がある。
+- 商品別月末評価額が未登録の場合、本APIでは新規登録しない。
+- 未登録の商品別月末評価額を登録する場合は、VAL-002 商品別月末評価額登録APIを使用する。
+- 保有商品が属する資産口座は、対象年月時点で月末資産管理対象である必要がある。
+- 保有商品が属する資産口座は、残高記録単位が商品単位である必要がある。
+- 残高記録単位が口座単位の資産口座に属する保有商品については、本APIで更新できない。
+- 口座単位の月末資産残高は、BAL-003 月末資産残高更新APIを使用する。
+- 更新対象となる保有商品は、対象年月時点で評価額記録対象である必要がある。
+- `value = 0`への更新を許可する。
+- 商品別月末評価額は日本円の整数値として更新する。
+- 更新前と同じ`value`が指定された場合も、正常な更新要求として扱う。
+- 本APIでは商品別月末評価額の削除を行わない。
+- `value = null`によって未登録状態へ戻すことはできない。
+- 商品別月末評価額の更新によって、月末資産状況を自動的に確定しない。
+- 商品別月末評価額の更新によって、月末資産残高を登録・更新しない。
+- 商品別月末評価額の更新によって、目的達成判定を自動実行しない。
+- 商品別月末評価額を更新しても、過去の目的達成判定履歴は再計算しない。
+
+---
+
+## 13. 処理フロー
+
+```text
+リクエスト受付
+    ↓
+リクエストID生成
+    ↓
+X-User-Id検証
+    ↓
+操作対象利用者確認
+    ↓
+snapshotId検証
+    ↓
+holdingAssetId検証
+    ↓
+リクエストボディ検証
+    ↓
+月末資産状況取得
+    ↓
+存在・利用者境界確認
+    ↓
+月末資産状況の確定状態確認
+    ↓
+保有商品取得
+    ↓
+所属資産口座・利用者境界確認
+    ↓
+商品別月末評価額取得
+    ↓
+商品別月末評価額存在確認
+    ↓
+資産口座の残高記録単位確認
+    ↓
+対象年月時点の資産口座利用可否確認
+    ↓
+対象年月時点の保有商品状態確認
+    ↓
+商品別月末評価額更新
+    ↓
+APIレスポンス生成
+    ↓
+200 OK返却
+```
+
+---
+
+
+
+---
+
+月末資産状況の取得条件は、以下とする。
+
+```text
+id = snapshotId
+AND
+user_id = 操作対象利用者ID
+```
+
+保有商品の利用者境界は、所属する資産口座を経由して確認する。
+
+```text
+holding_assets.id = holdingAssetId
+AND
+holding_assets.asset_account_id = asset_accounts.id
+AND
+asset_accounts.user_id = 操作対象利用者ID
+```
+
+更新対象となる商品別月末評価額の取得条件は、以下とする。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+すべての更新条件を満たした場合のみ、既存の商品別月末評価額を更新する。
+
+---
+
+## 14. 月末資産状況の扱い
+
+商品別月末評価額を更新できるのは、月末資産状況が未確定の場合のみとする。
+
+```text
+confirmed = false
+    → 更新可能
+
+confirmed = true
+    → 更新不可
+```
+
+確定済みの場合は、SNP-005 月末資産状況確定解除APIによって確定解除した後に更新する。
+
+本APIによる更新成功後も、月末資産状況は未確定のままとする。
+
+```text
+更新前
+confirmed = false
+
+    ↓ 商品別月末評価額更新
+
+更新後
+confirmed = false
+```
+
+本APIでは、`month_end_asset_snapshots.confirmed`を更新しない。
+
+---
+
+## 15. 資産口座の扱い
+
+更新対象となる保有商品が属する資産口座は、以下の条件をすべて満たす必要がある。
+
+```text
+操作対象利用者に属している
+AND
+対象年月時点で月末資産管理対象である
+AND
+残高記録単位が商品単位である
+```
+
+対象年月は、月末資産状況の`target_year_month`を使用する。
+
+例えば、
+
+```text
+月末資産状況
+target_year_month = 2026-08
+```
+
+の場合は、`2026-08`時点で月末資産管理対象となっている資産口座に属する保有商品の商品別月末評価額のみ更新できる。
+
+現在の利用状態だけを使用して、過去月の更新可否を判定しない。
+
+---
+
+## 16. 残高記録単位
+
+資産口座の`balance_recording_unit`によって、使用する更新APIを分ける。
+
+```text
+口座単位
+    ↓
+BAL-003 月末資産残高更新
+
+商品単位
+    ↓
+VAL-003 商品別月末評価額更新
+```
+
+口座単位の資産口座について、VAL-003で商品別月末評価額を更新してはならない。
+
+これにより、
+
+```text
+口座単位の月末資産残高
+```
+
+と
+
+```text
+商品別月末評価額
+```
+
+の責務を分離する。
+
+---
+
+## 17. 保有商品の扱い
+
+更新対象となる保有商品は、対象年月時点で評価額記録対象である必要がある。
+
+対象年月は、月末資産状況の`target_year_month`を使用する。
+
+例えば、
+
+```text
+target_year_month = 2026-08
+```
+
+の場合は、`2026-08`時点で評価額記録対象となっている保有商品のみ更新できる。
+
+現在は無効化されている保有商品でも、対象年月時点で評価額記録対象であった場合は、過去月の商品別月末評価額を更新できる。
+
+反対に、現在は有効であっても、対象年月時点で評価額記録対象ではなかった場合は、更新できない。
+
+---
+
+## 18. 更新対象の特定
+
+更新対象となる商品別月末評価額は、以下の組み合わせで特定する。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+例えば、
+
+```text
+snapshotId = 12
+holdingAssetId = 5
+```
+
+の場合は、
+
+```text
+month_end_asset_snapshot_id = 12
+AND
+holding_asset_id = 5
+```
+
+を満たす既存の商品別月末評価額を更新する。
+
+該当する商品別月末評価額が存在しない場合は、新しいレコードを作成しない。
+
+```text
+商品別月末評価額あり
+    → VAL-003で更新
+
+商品別月末評価額なし
+    → VAL-003では更新不可
+    → VAL-002で登録
+```
+
+---
+
+## 19. 0円の扱い
+
+`value = 0`は、有効な商品別月末評価額として扱う。
+
+例えば、現在の評価額が
+
+```text
+value = 50000
+```
+
+の場合に、
+
+```json
+{
+  "value": 0
+}
+```
+
+を指定すると、正常に0円へ更新する。
+
+```text
+更新前
+value = 50000
+
+    ↓
+
+更新後
+value = 0
+```
+
+`0`を未入力または未登録として扱ってはならない。
+
+---
+
+## 20. 同一値への更新
+
+更新前と同じ`value`が指定された場合も、正常な更新要求として扱う。
+
+例えば、
+
+```text
+更新前
+value = 900000
+```
+
+に対して、
+
+```json
+{
+  "value": 900000
+}
+```
+
+が指定された場合も、エラーとはしない。
+
+本APIでは、更新前後の値が同一であることを理由に`409 Conflict`などを返却しない。
+
+更新結果として、同じ値が保持される。
+
+---
+
+## 21. 未登録状態への変更
+
+本APIでは、商品別月末評価額を未登録状態へ戻す処理を行わない。
+
+以下は許可しない。
+
+```json
+{
+  "value": null
+}
+```
+
+未登録状態は、
+
+```text
+month_end_holding_valuesの
+対象レコードが存在しない
+```
+
+ことで表現する。
+
+VAL-003は、既存レコードの`value`を更新する責務のみを持つ。
+
+商品別月末評価額の削除が将来的に必要となった場合は、別APIまたは別業務ルールとして検討する。
+
+---
+
+## 22. トランザクション境界
+
+業務条件の最終確認から商品別月末評価額の更新までを、1つのデータベーストランザクション内で実行する。
+
+トランザクション内では、主に以下を行う。
+
+1. 月末資産状況の最終確認
+2. 月末資産状況の確定状態確認
+3. 保有商品の存在・利用者境界確認
+4. 商品別月末評価額の存在確認
+5. 資産口座の残高記録単位確認
+6. 対象年月時点の資産口座利用可否確認
+7. 対象年月時点の保有商品状態確認
+8. 商品別月末評価額の更新
+
+更新条件を満たさない場合、または処理途中で例外が発生した場合は、既存の商品別月末評価額を変更しない。
+
+---
+
+## 23. 成功レスポンス
+
+### 23.1 HTTPステータス
+
+```text
+200 OK
+```
+
+商品別月末評価額の更新に成功した場合は、`200 OK`を返却する。
+
+更新前と同一の値が指定された場合も、`200 OK`を返却する。
+
+---
+
+### 23.2 レスポンスボディ
+
+```json
+{
+  "data": {
+    "holdingAssetId": "5",
+    "value": 900000
+  }
+}
+```
+
+0円へ更新した場合：
+
+```json
+{
+  "data": {
+    "holdingAssetId": "5",
+    "value": 0
+  }
+}
+```
+
+更新後の商品別月末評価額を`data`オブジェクトとして返却する。
+
+---
+
+## 24. レスポンス項目
+
+| 項目 | 型 | NULL | 説明 |
+| --- | --- | :---: | --- |
+| `data` | object | × | 更新後の商品別月末評価額 |
+| `data.holdingAssetId` | string | × | 保有商品ID |
+| `data.value` | integer | × | 更新後の商品別月末評価額 |
+
+`holdingAssetId`は、API共通方針に従って文字列として返却する。
+
+`value`は、日本円の整数値として返却する。
+
+```json
+{
+  "value": 900000
+}
+```
+
+0円の場合も、整数の`0`として返却する。
+
+```json
+{
+  "value": 0
+}
+```
+
+本APIでは、
+以下の情報は返却しない。
+
+- `id`
+- `month_end_asset_snapshot_id`
+- `user_id`
+- `asset_account_id`
+- `target_year_month`
+- `confirmed`
+- `holding_asset_name`
+- `asset_account_name`
+- `balance_recording_unit`
+- `previous_value`
+- `created_at`
+- `updated_at`
+- `balance`
+
+月末資産状況そのものの情報は、SNP-003 月末資産状況詳細取得APIで取得する。
+
+商品別月末評価額一覧が必要な場合は、VAL-001 商品別月末評価額一覧取得APIを使用する。
+
+---
+
+## 31. 関連テーブル
+
+### 31.1 month_end_holding_values
+
+本APIの更新対象となる
+商品別月末評価額を保持する。
+
+主に以下のカラムを使用する。
+
+| カラム | 用途 |
+|---|---|
+| `id` | 商品別月末評価額の内部識別子 |
+| `month_end_asset_snapshot_id` | 月末資産状況との関連 |
+| `holding_asset_id` | 保有商品との関連 |
+| `value` | 更新対象となる商品別月末評価額 |
+| `created_at` | 登録日時 |
+| `updated_at` | 更新日時 |
+
+更新対象は、
+以下の組み合わせで特定する。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+本APIでは、
+`value`を更新する。
+
+`id`は、
+APIのパスパラメータや
+レスポンスには使用しない。
+
+---
+
+### 31.2 month_end_asset_snapshots
+
+商品別月末評価額が属する
+月末資産状況を保持する。
+
+主に以下のカラムを使用する。
+
+| カラム | 用途 |
+|---|---|
+| `id` | `snapshotId`との照合 |
+| `user_id` | 操作対象利用者との利用者境界確認 |
+| `target_year_month` | 資産口座・保有商品の対象年月判定 |
+| `confirmed` | 商品別月末評価額を更新可能か判定 |
+
+月末資産状況は、
+以下の条件で取得する。
+
+```text
+id = snapshotId
+AND
+user_id = 操作対象利用者ID
+```
+
+`confirmed = false`の場合のみ、
+商品別月末評価額を更新できる。
+
+本APIでは、
+`month_end_asset_snapshots`を更新しない。
+
+---
+
+### 31.3 holding_assets
+
+更新対象となる
+商品別月末評価額に紐づく
+保有商品を確認するために使用する。
+
+主に以下のカラムを使用する。
+
+| カラム | 用途 |
+|---|---|
+| `id` | `holdingAssetId`との照合 |
+| `asset_account_id` | 所属する資産口座の特定 |
+| 保有商品の有効期間に関するカラム | 対象年月時点で評価額記録対象か判定 |
+
+保有商品は、
+所属する資産口座を経由して
+操作対象利用者との
+利用者境界を確認する。
+
+本APIでは、
+`holding_assets`を更新しない。
+
+---
+
+### 31.4 asset_accounts
+
+保有商品が属する
+資産口座を確認するために使用する。
+
+主に以下のカラムを使用する。
+
+| カラム | 用途 |
+|---|---|
+| `id` | `holding_assets.asset_account_id`との関連 |
+| `user_id` | 操作対象利用者との利用者境界確認 |
+| `balance_recording_unit` | 商品単位の残高記録対象であることの確認 |
+
+本APIでは、
+残高記録単位が
+商品単位である資産口座のみを
+更新対象とする。
+
+```text
+balance_recording_unit = 商品単位
+    → VAL-003で更新可能
+
+balance_recording_unit = 口座単位
+    → VAL-003では更新不可
+```
+
+本APIでは、
+`asset_accounts`を更新しない。
+
+---
+
+### 31.5 asset_account_available_settings
+
+資産口座が
+月末資産状況の対象年月時点で
+月末資産管理対象であるかを
+判定するために使用する。
+
+判定基準となる対象年月は、
+`month_end_asset_snapshots.target_year_month`
+とする。
+
+概念的には、
+以下を判定する。
+
+```text
+asset_account_id
++
+target_year_month
+    ↓
+対象年月時点で月末資産管理対象か
+```
+
+現在の資産口座の状態だけではなく、
+対象年月時点の利用可能状態を
+確認する。
+
+本APIでは、
+`asset_account_available_settings`を
+更新しない。
+
+---
+
+### 31.6 users
+
+`X-User-Id`で指定された
+利用者の存在確認に使用する。
+
+主に以下を確認する。
+
+```text
+id = X-User-Id
+AND
+deleted_at IS NULL
+```
+
+指定された利用者が
+存在しない場合、
+または論理削除されている場合は、
+更新処理を行わない。
+
+本APIでは、
+`users`を更新しない。
+
+---
+
+### 31.7 関連しないテーブル
+
+本APIでは、
+以下のテーブルを更新しない。
+
+- `users`
+- `asset_accounts`
+- `asset_account_available_settings`
+- `holding_assets`
+- `month_end_asset_snapshots`
+- `month_end_asset_balances`
+- `assessment_histories`
+
+更新対象となるのは、
+`month_end_holding_values`
+のみとする。
+
+---
+
+## 32. テスト観点
+
+### 32.1 正常系
+
+#### 商品別月末評価額を更新できること
+
+以下の条件を満たす場合、
+商品別月末評価額を
+正常に更新できること。
+
+- `X-User-Id`が正しく指定されている
+- 操作対象利用者が存在する
+- `snapshotId`が正しい
+- `holdingAssetId`が正しい
+- 月末資産状況が操作対象利用者に属している
+- 月末資産状況が未確定である
+- 保有商品が操作対象利用者に属する資産口座のものである
+- 商品別月末評価額が登録済みである
+- 資産口座の残高記録単位が商品単位である
+- 資産口座が対象年月時点で月末資産管理対象である
+- 保有商品が対象年月時点で評価額記録対象である
+- `value`が有効な整数値である
+
+期待結果：
+
+```text
+200 OK
+```
+
+`month_end_holding_values.value`が
+指定した値へ更新されること。
+
+---
+
+### 32.2 0円への更新
+
+以下を指定する。
+
+```json
+{
+  "value": 0
+}
+```
+
+期待結果：
+
+```text
+200 OK
+```
+
+`value = 0`として
+正常に更新されること。
+
+0円を
+未入力または未登録として
+扱わないこと。
+
+---
+
+### 32.3 同一値への更新
+
+現在値と
+同じ`value`を指定する。
+
+```text
+現在値
+value = 900000
+```
+
+```json
+{
+  "value": 900000
+}
+```
+
+期待結果：
+
+```text
+200 OK
+```
+
+同一値であることを理由に
+エラーとならないこと。
+
+複数回同じリクエストを実行しても、
+最終的な`value`が
+同じ状態になること。
+
+---
+
+### 32.4 利用者コンテキスト未指定
+
+`X-User-Id`を
+指定せずにリクエストする。
+
+期待結果：
+
+```text
+400 Bad Request
+USER_CONTEXT_REQUIRED
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.5 利用者ID形式不正
+
+不正な`X-User-Id`を
+指定する。
+
+例：
+
+```http
+X-User-Id: abc
+```
+
+期待結果：
+
+```text
+400 Bad Request
+INVALID_USER_ID
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.6 利用者不存在
+
+存在しない利用者IDを
+`X-User-Id`へ指定する。
+
+期待結果：
+
+```text
+404 Not Found
+USER_NOT_FOUND
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.7 論理削除済み利用者
+
+論理削除されている利用者IDを
+`X-User-Id`へ指定する。
+
+期待結果：
+
+```text
+404 Not Found
+USER_NOT_FOUND
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.8 snapshotId形式不正
+
+以下のような
+不正な`snapshotId`を指定する。
+
+```text
+0
+-1
+abc
+1.5
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.9 holdingAssetId形式不正
+
+以下のような
+不正な`holdingAssetId`を指定する。
+
+```text
+0
+-1
+abc
+1.5
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.10 value未指定
+
+`value`を指定せずに
+リクエストする。
+
+```json
+{}
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.11 valueがnull
+
+以下を指定する。
+
+```json
+{
+  "value": null
+}
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+既存の商品別月末評価額が
+削除されないこと。
+
+未登録状態へ
+変更されないこと。
+
+---
+
+### 32.12 valueが負数
+
+以下を指定する。
+
+```json
+{
+  "value": -1
+}
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.13 valueが小数
+
+以下を指定する。
+
+```json
+{
+  "value": 100.5
+}
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.14 valueが文字列
+
+以下を指定する。
+
+```json
+{
+  "value": "900000"
+}
+```
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+文字列から整数へ
+暗黙的に変換して
+更新しないこと。
+
+---
+
+### 32.15 valueが保持可能範囲を超える
+
+データベースで
+保持可能な金額範囲を超える
+`value`を指定する。
+
+期待結果：
+
+```text
+422 Unprocessable Entity
+VALIDATION_ERROR
+```
+
+データベースエラーになる前に
+入力値として拒否されること。
+
+---
+
+### 32.16 月末資産状況不存在
+
+存在しない`snapshotId`を指定する。
+
+期待結果：
+
+```text
+404 Not Found
+MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.17 他利用者の月末資産状況
+
+`X-User-Id`とは
+異なる利用者に属する
+`snapshotId`を指定する。
+
+期待結果：
+
+```text
+404 Not Found
+MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
+```
+
+他利用者の月末資産状況が
+存在することを
+レスポンスから判別できないこと。
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.18 月末資産状況が確定済み
+
+`confirmed = true`の
+月末資産状況を指定する。
+
+期待結果：
+
+```text
+409 Conflict
+MONTH_END_ASSET_SNAPSHOT_CONFIRMED
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.19 保有商品不存在
+
+存在しない
+`holdingAssetId`を指定する。
+
+期待結果：
+
+```text
+404 Not Found
+HOLDING_ASSET_NOT_FOUND
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.20 他利用者の保有商品
+
+他の利用者に属する
+資産口座の`holdingAssetId`を指定する。
+
+期待結果：
+
+```text
+404 Not Found
+HOLDING_ASSET_NOT_FOUND
+```
+
+他利用者の保有商品が
+存在することを
+レスポンスから判別できないこと。
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.21 商品別月末評価額不存在
+
+月末資産状況および
+保有商品は存在するが、
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+を満たす
+`month_end_holding_values`が
+存在しない状態で実行する。
+
+期待結果：
+
+```text
+404 Not Found
+MONTH_END_HOLDING_VALUE_NOT_FOUND
+```
+
+新しい
+`month_end_holding_values`レコードが
+作成されないこと。
+
+---
+
+### 32.22 資産口座が対象年月時点で利用不可
+
+保有商品が属する資産口座が、
+`target_year_month`時点で
+月末資産管理対象ではない状態で実行する。
+
+期待結果：
+
+```text
+409 Conflict
+ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.23 残高記録単位が口座単位
+
+保有商品が属する資産口座の
+`balance_recording_unit`が
+口座単位の状態で実行する。
+
+期待結果：
+
+```text
+409 Conflict
+ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH
+```
+
+商品別月末評価額が
+更新されないこと。
+
+`month_end_asset_balances`も
+変更されないこと。
+
+---
+
+### 32.24 保有商品が対象年月時点で評価額記録対象外
+
+指定した保有商品が
+`target_year_month`時点で
+評価額記録対象ではない状態で実行する。
+
+期待結果：
+
+```text
+409 Conflict
+HOLDING_ASSET_NOT_AVAILABLE_FOR_TARGET_MONTH
+```
+
+商品別月末評価額が
+更新されないこと。
+
+---
+
+### 32.25 現在は無効だが対象年月時点では有効な保有商品
+
+現在は無効化されているが、
+`target_year_month`時点では
+評価額記録対象であった
+保有商品を指定する。
+
+その他の更新条件を
+すべて満たしている状態とする。
+
+期待結果：
+
+```text
+200 OK
+```
+
+現在状態ではなく、
+対象年月時点の状態を基準に
+正しく更新できること。
+
+---
+
+### 32.26 現在は有効だが対象年月時点では対象外の保有商品
+
+現在は有効であるが、
+`target_year_month`時点では
+評価額記録対象ではなかった
+保有商品を指定する。
+
+期待結果：
+
+```text
+409 Conflict
+HOLDING_ASSET_NOT_AVAILABLE_FOR_TARGET_MONTH
+```
+
+現在状態だけを基準として
+誤って更新されないこと。
+
+---
+
+### 32.27 不要な項目を指定した場合
+
+リクエストボディへ、
+本APIで受け付けない項目を指定する。
+
+例：
+
+```json
+{
+  "value": 900000,
+  "userId": "2",
+  "holdingAssetId": "10"
+}
+```
+
+API共通方針で定めた
+未知項目の扱いに従うこと。
+
+少なくとも、
+リクエストボディの値によって
+
+- 操作対象利用者
+- 月末資産状況
+- 保有商品
+- 資産口座
+
+を変更できないこと。
+
+---
+
+### 32.28 副作用
+
+正常更新後に、
+更新対象となる
+`month_end_holding_values.value`
+以外の業務データが
+変更されていないことを確認する。
+
+少なくとも、
+以下が変更されていないこと。
+
+- `month_end_asset_snapshots.confirmed`
+- `asset_accounts`
+- `asset_account_available_settings`
+- `holding_assets`
+- `month_end_asset_balances`
+- 更新対象以外の`month_end_holding_values`
+- `assessment_histories`
+
+また、
+以下が自動実行されていないこと。
+
+- 月末資産状況の確定
+- 月末資産状況の確定解除
+- 商品別月末評価額の新規登録
+- 商品別月末評価額の削除
+- 月末資産残高の登録・更新
+- 目的達成判定
+- 目的達成判定履歴の再計算
+
+---
+
+### 32.29 トランザクション
+
+商品別月末評価額更新処理の途中で
+例外を発生させる。
+
+期待結果：
+
+- トランザクションがロールバックされること
+- `month_end_holding_values.value`が更新前の値を保持していること
+- 中途半端な更新状態が残らないこと
+
+---
+
+### 32.30 冪等性
+
+同一の`snapshotId`、
+`holdingAssetId`および
+`value`で
+複数回リクエストする。
+
+例：
+
+```text
+1回目
+PATCH value = 900000
+    ↓
+200 OK
+
+2回目
+PATCH value = 900000
+    ↓
+200 OK
+```
+
+期待結果：
+
+- いずれも正常終了すること
+- 最終的な`value`が`900000`であること
+- 商品別月末評価額レコードが増加しないこと
+- 重複データが作成されないこと
+
+---
+
+### 32.31 業務状態変更後の再実行
+
+1回目の更新成功後に、
+SNP-004 月末資産状況確定APIで
+月末資産状況を確定する。
+
+その後、
+同一の更新リクエストを再実行する。
+
+期待結果：
+
+```text
+409 Conflict
+MONTH_END_ASSET_SNAPSHOT_CONFIRMED
+```
+
+1回目に更新した
+商品別月末評価額が
+変更されないこと。
+
+---
+
+### 32.32 レスポンス
+
+正常更新時に、
+以下の形式で返却されること。
+
+```json
+{
+  "data": {
+    "holdingAssetId": "5",
+    "value": 900000
+  }
+}
+```
+
+以下を確認する。
+
+- HTTPステータスが`200 OK`であること
+- `holdingAssetId`がstringであること
+- `value`がintegerであること
+- `value = 0`の場合も`0`として返却されること
+- API共通方針の成功レスポンス形式に従っていること
+
+本APIでは、
+以下の情報がレスポンスへ
+含まれていないことを確認する。
+
+- `id`
+- `month_end_asset_snapshot_id`
+- `user_id`
+- `asset_account_id`
+- `target_year_month`
+- `confirmed`
+- `holding_asset_name`
+- `asset_account_name`
+- `balance_recording_unit`
+- `previous_value`
+- `created_at`
+- `updated_at`
+- `month_end_asset_balances`
+
+---
+
+### 32.33 エラーレスポンス
+
+各異常系について、
+API共通方針で定めた
+共通エラーレスポンス形式で
+返却されることを確認する。
+
+特に以下を確認する。
+
+- `error.code`が期待するエラーコードであること
+- `error.message`が設定されていること
+- `error.details`が配列であること
+- `error.requestId`が設定されていること
+- 内部例外メッセージが含まれていないこと
+- SQLが含まれていないこと
+- PostgreSQLの制約名が含まれていないこと
+- スタックトレースが含まれていないこと
+
+---
+
+### 32.34 利用者境界
+
+複数の利用者について、
+
+```text
+User A
+User B
+```
+
+それぞれに
+
+- 月末資産状況
+- 資産口座
+- 保有商品
+- 商品別月末評価額
+
+を作成する。
+
+`X-User-Id`に
+User Aを指定した状態で、
+User BのリソースIDを使用して
+更新を試みる。
+
+期待結果：
+
+- User Bの月末資産状況を更新できないこと
+- User Bの保有商品に紐づく商品別月末評価額を更新できないこと
+- User Bのデータが存在することをレスポンスから推測できないこと
+- User Bの`month_end_holding_values`が変更されていないこと
+
+---
+
+## 33. Laravel実装方針
+
+### 33.1 Action
+
+HTTPリクエストを受け付け、
+月末資産状況ID、
+保有商品ID、
+更新後の商品別月末評価額および
+利用者コンテキストを取得する。
+
+Form Requestまたは入力用DTOから
+検証済みの入力値を受け取り、
+商品別月末評価額更新UseCaseを呼び出す。
+
+UseCaseから受け取った更新結果を、
+Responderへ渡す。
+
+Actionでは、
+以下の処理を行わない。
+
+- `snapshotId`の形式検証
+- `holdingAssetId`の形式検証
+- リクエストボディの単項目バリデーション
+- データベース検索
+- 利用者境界の判定
+- 月末資産状況の存在確認
+- 月末資産状況の確定状態確認
+- 保有商品の存在確認
+- 商品別月末評価額の存在確認
+- 対象年月時点の資産口座利用可否判定
+- 残高記録単位の判定
+- 対象年月時点の保有商品判定
+- 商品別月末評価額の更新
+- トランザクション制御
+- レスポンス形式への変換
+
+---
+
+### 33.2 UseCase
+
+商品別月末評価額更新の
+ユースケース処理を担当する。
+
+主な処理は、
+以下とする。
+
+- 操作対象利用者を受け取る
+- 月末資産状況IDを受け取る
+- 保有商品IDを受け取る
+- 更新後の商品別月末評価額を受け取る
+- 月末資産状況を取得する
+- 月末資産状況が未確定であることを確認する
+- 保有商品および所属資産口座を取得する
+- 保有商品が操作対象利用者の資産口座に属していることを確認する
+- 商品別月末評価額を取得する
+- 商品別月末評価額が登録済みであることを確認する
+- 資産口座の残高記録単位が商品単位であることを確認する
+- 資産口座が対象年月時点で月末資産管理対象であることを確認する
+- 保有商品が対象年月時点で評価額記録対象であることを確認する
+- 商品別月末評価額を更新する
+- 更新結果を返却する
+
+指定された月末資産状況が存在しない場合、
+または操作対象利用者に属していない場合は、
+`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
+として扱う。
+
+指定された保有商品が存在しない場合、
+または他の利用者に属する資産口座の
+保有商品である場合は、
+`HOLDING_ASSET_NOT_FOUND`
+として扱う。
+
+指定された月末資産状況・保有商品の
+商品別月末評価額が存在しない場合は、
+`MONTH_END_HOLDING_VALUE_NOT_FOUND`
+として扱う。
+
+---
+
+### 33.3 Form Request / DTO
+
+リクエストボディの
+形式および単項目バリデーションを担当する。
+
+検証対象は、
+以下とする。
+
+- `value`
+
+#### value
+
+以下を検証する。
+
+- 必須であること
+- `null`ではないこと
+- integerであること
+- 0以上であること
+- 金額カラムで保持可能な範囲であること
+
+業務状態に依存する以下の検証は、
+Form Requestでは行わない。
+
+- 月末資産状況の存在確認
+- 月末資産状況の確定状態確認
+- 保有商品の存在確認
+- 保有商品の利用者境界確認
+- 商品別月末評価額の存在確認
+- 残高記録単位確認
+- 対象年月時点の資産口座利用可否確認
+- 対象年月時点の保有商品判定
+
+検証済みの入力値は、
+入力用DTOへ変換して
+UseCaseへ渡す。
+
+例：
+
+```php
+final readonly class UpdateMonthEndHoldingValueInput
+{
+    public function __construct(
+        public int $value,
+    ) {
+    }
+}
+```
+
+---
+
+### 33.4 パスパラメータ検証
+
+`snapshotId`および
+`holdingAssetId`は、
+API共通方針に従って検証する。
+
+以下を確認する。
+
+- 指定されていること
+- API共通方針で定めたID形式であること
+- 正の整数として扱えること
+
+形式が不正な場合は、
+`VALIDATION_ERROR`
+として扱う。
+
+パスパラメータの形式検証と、
+対象リソースの存在確認は
+分離する。
+
+```text
+形式不正
+    → VALIDATION_ERROR
+
+形式正常・リソース不存在
+    → NOT_FOUND系エラー
+```
+
+---
+
+### 33.5 Query
+
+商品別月末評価額更新に必要な
+データ取得を担当する。
+
+主な取得対象は、
+以下とする。
+
+- `month_end_asset_snapshots`
+- `asset_accounts`
+- `asset_account_available_settings`
+- `holding_assets`
+- `month_end_holding_values`
+
+本APIでは、
+原則として以下を参照しない。
+
+- `month_end_asset_balances`
+- `assessment_histories`
+
+Queryでは、
+登録・更新処理を行わない。
+
+---
+
+### 33.6 月末資産状況取得
+
+更新対象となる
+商品別月末評価額が属する
+月末資産状況は、
+必ず利用者境界を含めて取得する。
+
+```php
+$snapshot = MonthEndAssetSnapshot::query()
+    ->where('id', $snapshotId)
+    ->where('user_id', $userId)
+    ->first([
+        'id',
+        'user_id',
+        'target_year_month',
+        'confirmed',
+    ]);
+```
+
+以下のように、
+月末資産状況IDだけで
+取得してはならない。
+
+```php
+MonthEndAssetSnapshot::find($snapshotId);
+```
+
+取得できなかった場合は、
+以下を区別せず
+`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
+として扱う。
+
+- 月末資産状況が存在しない
+- 他の利用者に属している
+
+---
+
+### 33.7 確定状態確認
+
+取得した月末資産状況が
+未確定であることを確認する。
+
+```php
+if ($snapshot->confirmed) {
+    throw new
+        MonthEndAssetSnapshotConfirmedException();
+}
+```
+
+確定済みの場合は、
+
+`MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
+
+として扱う。
+
+本API内で、
+自動的に確定解除してはならない。
+
+---
+
+### 33.8 対象年月の取得
+
+資産口座および
+保有商品の業務状態を判定する年月には、
+月末資産状況の
+`target_year_month`を使用する。
+
+```php
+$targetYearMonth =
+    $snapshot->target_year_month;
+```
+
+リクエストから
+対象年月を受け取らない。
+
+```text
+snapshotId
+    ↓
+month_end_asset_snapshots
+    ↓
+target_year_month
+    ↓
+資産口座・保有商品の対象年月判定
+```
+
+---
+
+### 33.9 保有商品取得
+
+指定された保有商品は、
+所属する資産口座とともに取得し、
+利用者境界を確認する。
+
+概念例：
+
+```php
+$holdingAsset = HoldingAsset::query()
+    ->join(
+        'asset_accounts',
+        'asset_accounts.id',
+        '=',
+        'holding_assets.asset_account_id',
+    )
+    ->where(
+        'holding_assets.id',
+        $holdingAssetId,
+    )
+    ->where(
+        'asset_accounts.user_id',
+        $userId,
+    )
+    ->first([
+        'holding_assets.id',
+        'holding_assets.asset_account_id',
+        'asset_accounts.balance_recording_unit',
+    ]);
+```
+
+以下のように、
+保有商品IDだけで
+取得してはならない。
+
+```php
+HoldingAsset::find($holdingAssetId);
+```
+
+取得できなかった場合は、
+以下を区別せず
+`HOLDING_ASSET_NOT_FOUND`
+として扱う。
+
+- 保有商品が存在しない
+- 他の利用者に属する資産口座の保有商品である
+
+---
+
+### 33.10 商品別月末評価額取得
+
+更新対象の商品別月末評価額は、
+以下の組み合わせで取得する。
+
+```text
+month_end_asset_snapshot_id = snapshotId
+AND
+holding_asset_id = holdingAssetId
+```
+
+概念例：
+
+```php
+$holdingValue = MonthEndHoldingValue::query()
+    ->where(
+        'month_end_asset_snapshot_id',
+        $snapshot->id,
+    )
+    ->where(
+        'holding_asset_id',
+        $holdingAsset->id,
+    )
+    ->first();
+```
+
+取得できなかった場合は、
+
+`MONTH_END_HOLDING_VALUE_NOT_FOUND`
+
+として扱う。
+
+本APIでは、
+該当レコードが存在しない場合に
+新しい商品別月末評価額を
+作成してはならない。
+
+---
+
+### 33.11 残高記録単位確認
+
+保有商品が属する資産口座の
+`balance_recording_unit`が
+商品単位であることを確認する。
+
+概念例：
+
+```php
+if (
+    $holdingAsset->balance_recording_unit
+    !== BalanceRecordingUnit::HOLDING
+) {
+    throw new
+        AssetAccountBalanceRecordingUnitMismatchException();
+}
+```
+
+実際のEnum名・定数名は、
+共通定義に従う。
+
+条件を満たさない場合は、
+
+`ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH`
+
+として扱う。
+
+口座単位の場合は、
+BAL-003 月末資産残高更新APIを使用する。
+
+---
+
+### 33.12 対象年月時点の資産口座利用可否判定
+
+月末資産状況の
+`target_year_month`を使用して、
+保有商品が属する資産口座が
+対象年月時点で
+月末資産管理対象であることを確認する。
+
+判定には、
+`asset_account_available_settings`
+を使用する。
+
+概念的には、
+以下を判定する。
+
+```text
+assetAccountId
++
+snapshot.target_year_month
+    ↓
+対象年月時点で月末資産管理対象か
+```
+
+対象年月時点で
+月末資産管理対象ではない場合は、
+
+`ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH`
+
+として扱う。
+
+現在の状態だけを使用して、
+過去月の更新可否を
+判断してはならない。
+
+---
+
+### 33.13 対象年月時点の保有商品判定
+
+指定された保有商品が、
+月末資産状況の
+`target_year_month`時点で
+評価額記録対象であることを確認する。
+
+概念的には、
+
+```text
+holdingAssetId
++
+snapshot.target_year_month
+    ↓
+対象年月時点で評価額記録対象か
+```
+
+を判定する。
+
+対象年月時点で
+評価額記録対象ではない場合は、
+
+`HOLDING_ASSET_NOT_AVAILABLE_FOR_TARGET_MONTH`
+
+として扱う。
+
+現在の有効・無効状態だけを使用して、
+過去月の更新可否を
+判断してはならない。
+
+---
+
+### 33.14 Repository
+
+既存の商品別月末評価額の
+更新を担当する。
+
+更新する値は、
+`value`のみとする。
+
+概念例：
+
+```php
+public function updateValue(
+    MonthEndHoldingValue $holdingValue,
+    int $value,
+): MonthEndHoldingValue {
+    $holdingValue->value = $value;
+    $holdingValue->save();
+
+    return $holdingValue;
+}
+```
+
+以下の項目は、
+本APIで変更しない。
+
+- `id`
+- `month_end_asset_snapshot_id`
+- `holding_asset_id`
+- `created_at`
+
+`updated_at`は、
+Laravelによって更新する。
+
+Repositoryでは、
+以下の処理を行わない。
+
+- 月末資産状況の確定
+- 月末資産状況の確定解除
+- 商品別月末評価額の新規登録
+- 商品別月末評価額の削除
+- 月末資産残高の登録・更新
+- 目的達成判定の実行
+
+---
+
+### 33.15 create・upsertを使用しない
+
+本APIは、
+既存の商品別月末評価額を
+更新する責務のみを持つ。
+
+そのため、
+以下のような
+`updateOrCreate`は使用しない。
+
+```php
+MonthEndHoldingValue::updateOrCreate(
+    [
+        'month_end_asset_snapshot_id'
+            => $snapshot->id,
+        'holding_asset_id'
+            => $holdingAsset->id,
+    ],
+    [
+        'value'
+            => $input->value,
+    ],
+);
+```
+
+この実装では、
+商品別月末評価額が
+存在しない場合に
+新しいレコードが作成されてしまう。
+
+```text
+登録
+    → VAL-002
+
+更新
+    → VAL-003
+```
+
+の責務を維持するため、
+更新対象が存在しない場合は
+
+`MONTH_END_HOLDING_VALUE_NOT_FOUND`
+
+を返却する。
+
+---
+
+### 33.16 Mass Assignment
+
+クライアントから受け取った値を
+そのままEloquentモデルへ
+渡してはならない。
+
+以下のような実装は避ける。
+
+```php
+$holdingValue->update(
+    $request->all(),
+);
+```
+
+更新値は、
+検証済みの`value`のみを
+明示的に指定する。
+
+```php
+$holdingValue->update([
+    'value' => $input->value,
+]);
+```
+
+これにより、
+クライアントから
+
+- `month_end_asset_snapshot_id`
+- `holding_asset_id`
+- `created_at`
+- その他のサーバー管理項目
+
+を意図せず変更されることを防止する。
+
+---
+
+### 33.17 0円の扱い
+
+`value = 0`は、
+有効な更新値として扱う。
+
+以下のような
+truthy / falsyによる判定は行わない。
+
+```php
+if (! $input->value) {
+    // 0円まで未入力扱いになるため使用しない
+}
+```
+
+Form Requestでは、
+0を正常値として受け付ける。
+
+```text
+value = null
+    → 不正
+
+value = 0
+    → 正常
+
+value > 0
+    → 正常
+```
+
+---
+
+### 33.18 同一値への更新
+
+更新前と同一の`value`が
+指定された場合も、
+正常な更新要求として扱う。
+
+例えば、
+
+```text
+現在値
+value = 900000
+
+更新値
+value = 900000
+```
+
+の場合も、
+専用エラーを発生させない。
+
+概念的には、
+通常どおり更新処理を実行してよい。
+
+```php
+$holdingValue->value = $input->value;
+$holdingValue->save();
+```
+
+Phase1では、
+値が変化していないことを理由に
+更新処理を特別に分岐させる必要はない。
+
+---
+
+### 33.19 トランザクション
+
+業務条件の最終確認から
+商品別月末評価額の更新までを、
+1つのデータベーストランザクション内で実行する。
+
+実装例：
+
+```php
+$holdingValue = DB::transaction(
+    function () use (
+        $userId,
+        $snapshotId,
+        $holdingAssetId,
+        $input,
+    ): MonthEndHoldingValue {
+        $snapshot =
+            $this->snapshotQuery
+                ->findByUserAndId(
+                    $userId,
+                    $snapshotId,
+                );
+
+        if ($snapshot === null) {
+            throw new
+                MonthEndAssetSnapshotNotFoundException();
+        }
+
+        if ($snapshot->confirmed) {
+            throw new
+                MonthEndAssetSnapshotConfirmedException();
+        }
+
+        $holdingAsset =
+            $this->holdingAssetQuery
+                ->findByUserAndId(
+                    $userId,
+                    $holdingAssetId,
+                );
+
+        if ($holdingAsset === null) {
+            throw new
+                HoldingAssetNotFoundException();
+        }
+
+        $holdingValue =
+            $this->holdingValueQuery
+                ->findBySnapshotAndHoldingAsset(
+                    $snapshot->id,
+                    $holdingAsset->id,
+                );
+
+        if ($holdingValue === null) {
+            throw new
+                MonthEndHoldingValueNotFoundException();
+        }
+
+        $this->recordingUnitValidator
+            ->validateForHoldingValue(
+                $holdingAsset->assetAccount,
+            );
+
+        $this->assetAccountAvailabilityValidator
+            ->validate(
+                $holdingAsset->assetAccount,
+                $snapshot->target_year_month,
+            );
+
+        $this->holdingAssetAvailabilityValidator
+            ->validate(
+                $holdingAsset,
+                $snapshot->target_year_month,
+            );
+
+        return $this->repository->updateValue(
+            $holdingValue,
+            $input->value,
+        );
+    },
+);
+```
+
+処理途中で例外が発生した場合は、
+商品別月末評価額を
+更新前の状態へロールバックする。
+
+---
+
+### 33.20 排他制御
+
+Phase1では、
+商品別月末評価額更新専用の
+楽観ロック用バージョン番号は
+導入しない。
+
+ただし、
+更新処理中に
+対象レコードの状態が変化する可能性を
+考慮する必要がある場合は、
+必要に応じて
+`lockForUpdate()`を利用してよい。
+
+概念例：
+
+```php
+$holdingValue = MonthEndHoldingValue::query()
+    ->where(
+        'month_end_asset_snapshot_id',
+        $snapshotId,
+    )
+    ->where(
+        'holding_asset_id',
+        $holdingAssetId,
+    )
+    ->lockForUpdate()
+    ->first();
+```
+
+Phase1では、
+複雑な競合制御を追加するよりも、
+トランザクション境界を明確にし、
+必要な場合のみ
+行ロックを採用する。
+
+---
+
+### 33.21 確定状態との競合
+
+商品別月末評価額の更新と
+月末資産状況の確定が
+同時に実行される場合、
+
+```text
+VAL-003
+    → confirmed = false確認
+
+SNP-004
+    → 確定処理
+
+VAL-003
+    → value更新
+```
+
+のような競合を
+避ける必要がある。
+
+そのため、
+必要に応じて
+月末資産状況取得時に
+行ロックを使用する。
+
+概念例：
+
+```php
+$snapshot = MonthEndAssetSnapshot::query()
+    ->where('id', $snapshotId)
+    ->where('user_id', $userId)
+    ->lockForUpdate()
+    ->first();
+```
+
+VAL-003とSNP-004で
+同じ月末資産状況に対する
+更新系処理の整合性を保つ。
+
+具体的なロック方針は、
+SNP-004と統一する。
+
+---
+
+### 33.22 業務ルール判定クラス
+
+BAL系APIおよび
+VAL系APIで共通して使用する
+業務ルールについては、
+必要に応じて
+判定クラスへ分離する。
+
+例えば、
+以下の責務へ分離できる。
+
+```text
+AssetAccountAvailabilityValidator
+    → 対象年月時点の資産口座利用可否判定
+
+AssetAccountBalanceRecordingUnitValidator
+    → 残高記録単位の判定
+
+HoldingAssetAvailabilityValidator
+    → 対象年月時点の保有商品判定
+```
+
+VAL-002とVAL-003で
+同一の業務ルールを
+別々に実装しない。
+
+各Validatorでは、
+HTTPレスポンス生成や
+商品別月末評価額の更新を行わない。
+
+---
+
+### 33.23 Responder
+
+UseCaseから受け取った
+更新後の商品別月末評価額を、
+API共通方針に従った
+HTTPレスポンスへ変換する。
+
+正常終了時は、
+`200 OK`とともに
+`data`オブジェクトとして返却する。
+
+Responderは、
+以下の処理を行わない。
+
+- データベース検索
+- 利用者境界の判定
+- 確定状態の判定
+- 商品別月末評価額の存在確認
+- 残高記録単位の判定
+- 対象年月時点の資産口座利用可否判定
+- 対象年月時点の保有商品判定
+- 商品別月末評価額の更新
+
+---
+
+### 33.24 API Resource
+
+データベースカラムを直接返却せず、
+API Resourceを利用して
+APIレスポンス形式へ変換する。
+
+変換例：
+
+```php
+return [
+    'holdingAssetId'
+        => (string) $this->holding_asset_id,
+    'value'
+        => (int) $this->value,
+];
+```
+
+`value = 0`の場合も、
+整数の`0`として返却する。
+
+本APIでは、
+以下の情報は返却しない。
+
+- `id`
+- `month_end_asset_snapshot_id`
+- `user_id`
+- `asset_account_id`
+- `target_year_month`
+- `confirmed`
+- `holding_asset_name`
+- `asset_account_name`
+- `balance_recording_unit`
+- `previous_value`
+- `created_at`
+- `updated_at`
+- `month_end_asset_balances`
+
+---
+
+### 33.25 Middleware
+
+以下の共通ミドルウェアを適用する。
+
+- 利用者コンテキスト設定
+- リクエストID生成
+- JSONリクエスト・レスポンス共通処理
+- 共通例外処理
+- ログコンテキスト設定
+
+利用者コンテキスト設定ミドルウェアでは、
+`X-User-Id`を検証し、
+操作対象利用者を特定する。
+
+Action以降では、
+検証済みの利用者コンテキストを使用する。
+
+---
+
+### 33.26 Eloquentモデル
+
+`MonthEndHoldingValue`モデルは、
+`month_end_holding_values`
+テーブルへ対応する。
+
+主に以下の属性を使用する。
+
+```text
+id
+month_end_asset_snapshot_id
+holding_asset_id
+value
+created_at
+updated_at
+```
+
+`value`は、
+日本円の整数値として扱う。
+
+必要に応じて
+integer castを設定する。
+
+```php
+protected function casts(): array
+{
+    return [
+        'value' => 'integer',
+    ];
+}
+```
+
+必要に応じて、
+以下のRelationを定義する。
+
+```php
+public function snapshot(): BelongsTo
+{
+    return $this->belongsTo(
+        MonthEndAssetSnapshot::class,
+        'month_end_asset_snapshot_id',
+    );
+}
+
+public function holdingAsset(): BelongsTo
+{
+    return $this->belongsTo(
+        HoldingAsset::class,
+        'holding_asset_id',
+    );
+}
+```
+
+---
+
+### 33.27 更新後モデルの扱い
+
+更新成功後は、
+更新済みのモデルまたはDTOを
+Responderへ返却する。
+
+必要に応じて、
+更新後の値を確実に取得するため
+`refresh()`を使用してよい。
+
+```php
+$holdingValue->update([
+    'value' => $value,
+]);
+
+$holdingValue->refresh();
+
+return $holdingValue;
+```
+
+ただし、
+API Resourceで必要となる項目が
+すでにモデル上で確定している場合は、
+不要な再検索を行わない。
+
+---
+
+### 33.28 N+1問題
+
+本APIは、
+単一の商品別月末評価額を
+更新するAPIであるため、
+一覧APIのような
+典型的なN+1問題は発生しにくい。
+
+ただし、
+以下のようにRelationshipを
+段階的に遅延ロードし、
+不要なSQLを増加させない。
+
+```text
+holdingValue
+    ↓ 個別取得
+holdingAsset
+    ↓ 個別取得
+assetAccount
+    ↓ 個別取得
+availableSettings
+```
+
+更新処理で必要となる関連情報は、
+JOIN、
+Eager Loadingまたは
+専用Queryによって
+必要な範囲でまとめて取得する。
+
+---
+
+### 33.29 キャッシュ
+
+Phase1では、
+本API専用の
+アプリケーションキャッシュを
+使用しない。
+
+商品別月末評価額は
+更新対象となる業務データであり、
+更新直後に最新状態を
+参照できる必要がある。
+
+VAL-003成功後に
+VAL-001を取得した場合は、
+更新後の値が返却されることを前提とする。
+
+---
+
+### 33.30 例外変換
+
+LaravelおよびPostgreSQLの
+内部例外は、
+そのままAPIレスポンスへ公開しない。
+
+主な例外変換は、
+以下とする。
+
+| 内部状態 | 独自エラーコード |
+|---|---|
+| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
+| 利用者ID形式不正 | `INVALID_USER_ID` |
+| 利用者不存在 | `USER_NOT_FOUND` |
+| 入力値不正 | `VALIDATION_ERROR` |
+| 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
+| 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
+| 月末資産状況確定済み | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` |
+| 保有商品不存在 | `HOLDING_ASSET_NOT_FOUND` |
+| 利用者境界外の保有商品 | `HOLDING_ASSET_NOT_FOUND` |
+| 商品別月末評価額不存在 | `MONTH_END_HOLDING_VALUE_NOT_FOUND` |
+| 資産口座が対象年月時点で利用不可 | `ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH` |
+| 残高記録単位不一致 | `ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH` |
+| 保有商品が対象年月時点で対象外 | `HOLDING_ASSET_NOT_AVAILABLE_FOR_TARGET_MONTH` |
+| 想定外例外 | `INTERNAL_SERVER_ERROR` |
+
+SQL、
+スタックトレース、
+PostgreSQLの制約名および
+内部例外メッセージは、
+APIレスポンスへ含めない。
+
+ログには、
+調査に必要な範囲で
+以下を記録する。
+
+- 操作対象利用者ID
+- 月末資産状況ID
+- 保有商品ID
+- 対象年月
+- 独自エラーコード
+- リクエストID
+
+更新前後の商品別月末評価額については、
+不要にエラーログへ出力しない。
+
+---
+
+## 34. React・TypeScriptでの利用
+
+パスパラメータの型は、
+以下とする。
+
+```ts
+export type UpdateMonthEndHoldingValueParams = {
+  snapshotId: string;
+  holdingAssetId: string;
+};
+```
+
+リクエスト型は、
+以下とする。
+
+```ts
+export type UpdateMonthEndHoldingValueRequest = {
+  value: number;
+};
+```
+
+レスポンス型は、
+以下とする。
+
+```ts
+export type UpdatedMonthEndHoldingValue = {
+  holdingAssetId: string;
+  value: number;
+};
+
+export type UpdateMonthEndHoldingValueResponse = {
+  data: UpdatedMonthEndHoldingValue;
+};
+```
+
+API呼び出し例は、
+以下とする。
+
+```ts
+const response =
+  await apiClient.patch<UpdateMonthEndHoldingValueResponse>(
+    `/api/v1/month-end-asset-snapshots/${snapshotId}/holding-values/${holdingAssetId}`,
+    {
+      value: 900000,
+    },
+  );
+```
+
+商品別月末評価額入力画面などから、
+登録済みの商品別月末評価額を
+修正する際に利用する。
+
+---
+
+### 34.1 snapshotIdの扱い
+
+`snapshotId`は、
+API共通方針に従って
+文字列として扱う。
+
+```ts
+const snapshotId: string = '12';
+```
+
+フロントエンド側で
+数値へ変換して
+業務計算には使用しない。
+
+URL生成時も、
+文字列のまま使用する。
+
+---
+
+### 34.2 holdingAssetIdの扱い
+
+`holdingAssetId`は、
+文字列として扱う。
+
+```ts
+const holdingAssetId: string = '5';
+```
+
+更新対象となる保有商品は、
+パスパラメータで指定する。
+
+```ts
+const url =
+  `/api/v1/month-end-asset-snapshots/${snapshotId}/holding-values/${holdingAssetId}`;
+```
+
+リクエストボディへ
+`holdingAssetId`を
+重複して含めない。
+
+フロントエンド側では、
+保有商品が操作対象利用者に
+属しているかを
+最終判定しない。
+
+利用者境界は、
+バックエンドで保証する。
+
+---
+
+### 34.3 valueの扱い
+
+`value`は、
+日本円の整数値として扱う。
+
+```ts
+const request: UpdateMonthEndHoldingValueRequest = {
+  value: 900000,
+};
+```
+
+0円への更新も許可する。
+
+```ts
+const request: UpdateMonthEndHoldingValueRequest = {
+  value: 0,
+};
+```
+
+以下のような
+truthy / falsyによる
+入力有無判定は行わない。
+
+```ts
+if (!value) {
+  // value = 0も未入力扱いになるため使用しない
+}
+```
+
+0円と未入力を
+明確に区別する。
+
+---
+
+### 34.4 入力フォーム
+
+HTMLのinput要素から取得する値は
+文字列であるため、
+API送信前に
+数値へ変換する。
+
+例：
+
+```ts
+const [valueInput, setValueInput] =
+  useState('');
+
+const value =
+  valueInput === ''
+    ? null
+    : Number(valueInput);
+```
+
+未入力の場合は、
+APIを実行しない。
+
+```ts
+if (value === null) {
+  return;
+}
+```
+
+整数であることも
+必要に応じて確認する。
+
+```ts
+if (!Number.isInteger(value)) {
+  return;
+}
+```
+
+ただし、
+最終的なバリデーションは
+バックエンドで行う。
+
+---
+
+### 34.5 VAL-001との連携
+
+VAL-001 商品別月末評価額一覧取得APIで
+商品別月末評価額の
+登録状態を確認する。
+
+```text
+value = null
+    → 未登録
+
+value !== null
+    → 登録済み
+```
+
+VAL-003は、
+`value !== null`の
+登録済みデータに対して使用する。
+
+```ts
+if (item.value !== null) {
+  // VAL-003で更新可能
+}
+```
+
+`value = 0`も
+登録済みであるため、
+VAL-003の対象とする。
+
+---
+
+### 34.6 VAL-002との使い分け
+
+商品別月末評価額の
+登録状態によって、
+使用するAPIを分ける。
+
+```text
+未登録
+value = null
+    ↓
+VAL-002 商品別月末評価額登録
+
+登録済み
+value !== null
+    ↓
+VAL-003 商品別月末評価額更新
+```
+
+VAL-003を
+upsert目的で使用しない。
+
+商品別月末評価額が
+未登録の場合に、
+VAL-003の失敗を契機として
+自動的にVAL-002へ切り替える処理は、
+Phase1では行わない。
+
+---
+
+### 34.7 月末資産状況の確定状態
+
+VAL-003を利用できるのは、
+月末資産状況が
+未確定の場合のみである。
+
+編集可否を
+画面上で補助的に制御する場合は、
+SNP-003 月末資産状況詳細取得APIから
+`confirmed`を取得する。
+
+```ts
+const canEdit =
+  !snapshot.confirmed;
+```
+
+確定済みの場合は、
+入力欄や保存ボタンを
+非活性化してよい。
+
+ただし、
+更新可否の最終判断は
+バックエンドのVAL-003で行う。
+
+---
+
+### 34.8 確定済みエラーの扱い
+
+`MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
+が返却された場合は、
+商品別月末評価額を
+更新できないことを表示する。
+
+表示例：
+
+```text
+確定済みの月末資産状況は
+編集できません。
+
+編集する場合は、
+先に確定を解除してください。
+```
+
+必要に応じて、
+SNP-005 月末資産状況確定解除APIへの
+導線を表示する。
+
+---
+
+### 34.9 商品別月末評価額不存在エラー
+
+`MONTH_END_HOLDING_VALUE_NOT_FOUND`
+が返却された場合は、
+画面上では登録済みとして
+表示されているデータが、
+実際には存在しなくなっている可能性がある。
+
+例えば、
+
+```text
+VAL-001取得
+    ↓
+value = 850000
+
+別操作で状態変更
+    ↓
+現在は商品別月末評価額なし
+
+古い画面状態からVAL-003実行
+    ↓
+404 Not Found
+```
+
+のようなケースが考えられる。
+
+この場合は、
+VAL-001を再取得して
+最新状態を画面へ反映する。
+
+自動的にVAL-002を実行して
+新しいレコードを作成しない。
+
+---
+
+### 34.10 保有商品不存在エラー
+
+`HOLDING_ASSET_NOT_FOUND`
+が返却された場合は、
+表示している保有商品の状態が
+最新ではない可能性がある。
+
+必要に応じて、
+VAL-001を再取得する。
+
+他の利用者に属する
+保有商品であった場合も
+同じエラーとなるため、
+フロントエンドでは
+不存在理由を推測しない。
+
+---
+
+### 34.11 資産口座の対象年月エラー
+
+`ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH`
+が返却された場合は、
+対象年月時点では
+その資産口座が
+月末資産管理対象ではないことを表示する。
+
+表示例：
+
+```text
+この保有商品の資産口座は、
+対象年月の月末資産管理対象ではありません。
+```
+
+現在の資産口座状態だけを使用して、
+フロントエンド側で
+過去月の更新可否を
+独自判定しない。
+
+---
+
+### 34.12 残高記録単位不一致の扱い
+
+`ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH`
+が返却された場合は、
+対象資産口座が
+商品単位の管理対象ではないことを表示する。
+
+表示例：
+
+```text
+この資産口座は、
+商品別評価額の更新対象ではありません。
+```
+
+口座単位の月末資産残高を
+変更する場合は、
+BAL-003 月末資産残高更新APIを使用する。
+
+---
+
+### 34.13 保有商品の対象年月エラー
+
+`HOLDING_ASSET_NOT_AVAILABLE_FOR_TARGET_MONTH`
+が返却された場合は、
+対象年月時点で
+商品別月末評価額の
+記録対象ではないことを表示する。
+
+表示例：
+
+```text
+この保有商品は、
+対象年月の商品別月末評価額の
+更新対象ではありません。
+```
+
+必要に応じて、
+VAL-001を再取得する。
+
+---
+
+### 34.14 同一値への更新
+
+現在の値と
+同じ値を送信しても、
+正常な更新として扱う。
+
+```ts
+const currentValue = 900000;
+const inputValue = 900000;
+```
+
+この場合も、
+VAL-003を実行してよい。
+
+```text
+PATCH
+value = 900000
+    ↓
+200 OK
+```
+
+フロントエンド側で
+同一値更新を禁止する必要はない。
+
+ただし、
+不要なAPI通信を減らす目的で、
+
+```ts
+if (value === currentValue) {
+  return;
+}
+```
+
+のようなUI上の最適化を
+行ってもよい。
+
+この判定は、
+業務ルールではなく
+フロントエンド上の最適化として扱う。
+
+---
+
+### 34.15 0円への更新
+
+0円への更新を
+正常な操作として扱う。
+
+```ts
+await updateHoldingValue({
+  value: 0,
+});
+```
+
+以下のような判定によって
+保存処理を止めてはならない。
+
+```ts
+if (!value) {
+  return;
+}
+```
+
+`0`と
+未入力を必ず区別する。
+
+---
+
+### 34.16 更新処理中の画面制御
+
+更新処理中は、
+保存ボタンを非活性化する。
+
+React Query等を使用する場合は、
+Mutationの状態を利用する。
+
+例：
+
+```ts
+const mutation =
+  useMutation({
+    mutationFn: updateMonthEndHoldingValue,
+  });
+
+const isSubmitting =
+  mutation.isPending;
+```
+
+```tsx
+<button
+  type="submit"
+  disabled={isSubmitting}
+>
+  保存
+</button>
+```
+
+これにより、
+利用者による
+不要な連続クリックを抑止する。
+
+VAL-003自体は冪等であるため、
+二重送信によって
+同じ値が設定されても
+最終状態は同じとなる。
+
+---
+
+### 34.17 更新成功時の扱い
+
+更新成功後は、
+レスポンスの`value`を
+画面へ反映できる。
+
+```ts
+const updatedValue =
+  response.data.value;
+```
+
+例えば、
+
+```text
+更新前
+value = 850000
+
+    ↓ VAL-003
+
+更新後
+value = 900000
+```
+
+となる。
+
+---
+
+### 34.18 再取得
+
+更新成功後は、
+必要に応じて
+VAL-001を再取得する。
+
+React Query等を使用する場合は、
+対象の`snapshotId`に対応する
+一覧クエリをinvalidateしてよい。
+
+```ts
+queryClient.invalidateQueries({
+  queryKey: [
+    'monthEndHoldingValues',
+    snapshotId,
+  ],
+});
+```
+
+これにより、
+サーバー上の最新状態を
+一覧へ反映できる。
+
+---
+
+### 34.19 Mutation実装例
+
+React Queryを使用する場合の
+概念例は、
+以下とする。
+
+```ts
+type UpdateMonthEndHoldingValueArgs = {
+  snapshotId: string;
+  holdingAssetId: string;
+  value: number;
+};
+
+export const updateMonthEndHoldingValue =
+  async ({
+    snapshotId,
+    holdingAssetId,
+    value,
+  }: UpdateMonthEndHoldingValueArgs) => {
+    const response =
+      await apiClient.patch<UpdateMonthEndHoldingValueResponse>(
+        `/api/v1/month-end-asset-snapshots/${snapshotId}/holding-values/${holdingAssetId}`,
+        {
+          value,
+        },
+      );
+
+    return response.data;
+  };
+```
+
+Hookの概念例：
+
+```ts
+export const useUpdateMonthEndHoldingValue =
+  (
+    snapshotId: string,
+  ) => {
+    const queryClient =
+      useQueryClient();
+
+    return useMutation({
+      mutationFn:
+        updateMonthEndHoldingValue,
+
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: [
+            'monthEndHoldingValues',
+            snapshotId,
+          ],
+        });
+      },
+    });
+  };
+```
+
+実際のAPI Clientおよび
+React Queryの採用方針は、
+フロントエンド共通設計に従う。
+
+---
+
+### 34.20 バリデーションエラーの扱い
+
+`VALIDATION_ERROR`が返却された場合は、
+`error.details`を利用して
+対象項目へエラーを表示する。
+
+本APIでは、
+主に以下が対象となる。
+
+```text
+snapshotId
+holdingAssetId
+value
+```
+
+`value`については、
+入力欄付近へ
+メッセージを表示する。
+
+例：
+
+```ts
+if (detail.field === 'value') {
+  setFieldError(
+    'value',
+    detail.message,
+  );
+}
+```
+
+`snapshotId`または
+`holdingAssetId`の形式不正は、
+通常の画面操作では
+発生しないことを前提とする。
+
+発生した場合は、
+不正な画面状態または
+URLとして扱う。
+
+---
+
+### 34.21 エラー表示
+
+エラーコードごとの
+基本的な扱いは、
+以下とする。
+
+| エラーコード | フロントエンドの扱い |
+|---|---|
+| `USER_CONTEXT_REQUIRED` | 利用者の選択を促す |
+| `INVALID_USER_ID` | 共通エラー表示を行う |
+| `USER_NOT_FOUND` | 利用者選択画面へ戻す |
+| `VALIDATION_ERROR` | 入力項目または不正な画面状態としてエラー表示する |
+| `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況一覧画面へ戻す |
+| `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` | 確定済みのため更新できないことを表示する |
+| `HOLDING_ASSET_NOT_FOUND` | VAL-001を再取得し、対象商品が存在しないことを表示する |
+| `MONTH_END_HOLDING_VALUE_NOT_FOUND` | VAL-001を再取得して未登録状態を反映する |
+| `ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH` | 対象年月では資産口座が利用できないことを表示する |
+| `ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH` | 口座単位の残高管理対象であることを表示する |
+| `HOLDING_ASSET_NOT_AVAILABLE_FOR_TARGET_MONTH` | 対象年月では評価額記録対象外であることを表示する |
+| `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
+
+---
+
+## 35. 設計上の補足
+
+### 35.1 更新対象をsnapshotIdとholdingAssetIdで特定する理由
+
+商品別月末評価額は、
+業務上、
+
+```text
+月末資産状況
++
+保有商品
+```
+
+の組み合わせによって
+一意に特定できる。
+
+そのため、
+内部的な
+商品別月末評価額IDを
+APIへ公開せず、
+
+```http
+PATCH /api/v1/month-end-asset-snapshots/{snapshotId}/holding-values/{holdingAssetId}
+```
+
+によって更新対象を表現する。
+
+---
+
+### 35.2 商品別月末評価額IDを公開しない理由
+
+フロントエンドが
+更新対象として必要とする情報は、
+
+```text
+snapshotId
+holdingAssetId
+```
+
+である。
+
+`month_end_holding_values.id`は
+データベース内部の識別子であり、
+業務上の識別子として
+クライアントへ公開する必要がない。
+
+これにより、
+VAL-001、
+VAL-002、
+VAL-003で
+同じ識別方法を使用できる。
+
+---
+
+### 35.3 PATCHを採用する理由
+
+本APIでは、
+既存の商品別月末評価額のうち
+`value`のみを変更する。
+
+リソース全体を
+置き換える処理ではないため、
+HTTPメソッドには
+`PATCH`を採用する。
+
+---
+
+### 35.4 PUTを採用しない理由
+
+PUTは、
+一般的に指定リソース全体の
+置換を表す。
+
+本APIで変更するのは、
+
+```text
+value
+```
+
+のみである。
+
+そのため、
+部分更新を表すPATCHを使用する。
+
+---
+
+### 35.5 upsertを採用しない理由
+
+VAL-003は、
+登録済みの商品別月末評価額を
+更新する責務を持つ。
+
+対象が存在しない場合に
+新しく登録してしまうと、
+
+```text
+VAL-002
+    → 登録
+
+VAL-003
+    → 更新
+```
+
+という責務分離が崩れる。
+
+そのため、
+対象が存在しない場合は
+
+`MONTH_END_HOLDING_VALUE_NOT_FOUND`
+
+を返却する。
+
+---
+
+### 35.6 valueをnullへ更新できない理由
+
+`null`は、
+商品別月末評価額が
+未登録である状態を表す。
+
+しかし、
+VAL-003は既存レコードを
+更新するAPIであり、
+レコード削除を行うAPIではない。
+
+そのため、
+
+```json
+{
+  "value": null
+}
+```
+
+によって未登録状態へ
+戻すことはできない。
+
+削除要件が必要になった場合は、
+別途API設計を検討する。
+
+---
+
+### 35.7 0円への更新を許可する理由
+
+商品別月末評価額として
+0円は有効な業務値である。
+
+そのため、
+
+```text
+value = 0
+```
+
+を正常値として扱う。
+
+```text
+レコードなし
+    → 未登録
+
+レコードあり
+value = 0
+    → 0円として登録済み
+```
+
+を明確に区別する。
+
+---
+
+### 35.8 同一値更新を許可する理由
+
+VAL-003は、
+指定された`value`を
+既存リソースへ設定するAPIである。
+
+そのため、
+現在値と同じ値が指定されても
+業務上の矛盾は発生しない。
+
+同じリクエストを
+繰り返しても
+最終状態が同じになるため、
+冪等性も維持できる。
+
+---
+
+### 35.9 確定済みデータを更新できない理由
+
+確定済み月末資産状況は、
+対象年月の正式な資産状況として扱う。
+
+確定後に
+商品別月末評価額を変更すると、
+確定時の内容と
+現在の内容に不整合が生じる。
+
+そのため、
+修正時は、
+
+```text
+SNP-005 確定解除
+    ↓
+VAL-003 評価額更新
+    ↓
+SNP-004 再確定
+```
+
+の手順を使用する。
+
+---
+
+### 35.10 対象年月時点の資産口座を確認する理由
+
+現在は有効な資産口座でも、
+過去の対象年月時点では
+月末資産管理対象ではなかった
+可能性がある。
+
+反対に、
+現在は対象外でも、
+対象年月当時は
+月末資産管理対象だった
+可能性がある。
+
+そのため、
+現在状態ではなく、
+
+```text
+month_end_asset_snapshots.target_year_month
+```
+
+を基準として
+更新可否を判定する。
+
+---
+
+### 35.11 対象年月時点の保有商品を確認する理由
+
+保有商品についても、
+現在の有効・無効状態と
+対象年月時点の状態が
+一致するとは限らない。
+
+過去月の商品別月末評価額を
+正しく修正できるよう、
+対象年月時点の状態を
+基準とする。
+
+---
+
+### 35.12 残高記録単位を確認する理由
+
+商品別月末評価額は、
+商品単位で残高を記録する
+資産口座だけで使用する。
+
+口座単位の資産口座については、
+`month_end_asset_balances`
+を使用する。
+
+```text
+口座単位
+    → BAL-003
+
+商品単位
+    → VAL-003
+```
+
+を明確に分離することで、
+資産額の二重管理を防止する。
+
+---
+
+### 35.13 更新によって自動確定しない理由
+
+VAL-003は、
+1つの商品別月末評価額を
+変更するAPIである。
+
+その変更によって
+月末資産状況全体の
+入力が完了したかどうかは
+判断しない。
+
+そのため、
+更新成功後も
+月末資産状況は未確定のままとし、
+確定はSNP-004による
+明示的な操作とする。
+
+---
+
+### 35.14 目的達成判定を自動実行しない理由
+
+商品別月末評価額の更新時点では、
+月末資産状況は未確定である。
+
+未確定データの変更ごとに
+目的達成判定を実行すると、
+不要な判定履歴が増加する。
+
+そのため、
+VAL-003では
+目的達成判定を実行しない。
+
+---
+
+### 35.15 過去の判定履歴を再計算しない理由
+
+`assessment_histories`は、
+判定を実行した時点の
+結果を保持する履歴である。
+
+商品別月末評価額を
+後から変更しても、
+保存済みの履歴を
+書き換えない。
+
+過去の判定結果は、
+その時点の結果として保持する。
+
+---
+
+### 35.16 冪等である理由
+
+VAL-003は、
+対象リソースへ
+指定された`value`を設定する。
+
+同一条件で複数回実行しても、
+
+```text
+value = 900000
+```
+
+という最終状態は変わらない。
+
+そのため、
+本APIは冪等として扱う。
+
+ただし、
+途中で月末資産状況が
+確定されるなど
+外部状態が変化した場合は、
+同一リクエストでも
+異なるHTTPレスポンスとなる可能性がある。
+
+---
+
+### 35.17 Idempotency-Keyを採用しない理由
+
+本API自体が
+冪等な更新操作であるため、
+Phase1では
+`Idempotency-Key`を使用しない。
+
+不要な二重送信については、
+フロントエンドで
+保存ボタンを非活性化するなど、
+UX上の対策を行う。
+
+---
+
+### 35.18 排他制御を過剰に実装しない理由
+
+Phase1では、
+主な利用者が限定され、
+同一商品別月末評価額への
+高頻度な並行更新は想定しない。
+
+そのため、
+更新バージョン番号などの
+複雑な楽観ロックは採用しない。
+
+ただし、
+
+```text
+商品別月末評価額更新
++
+月末資産状況確定
+```
+
+の競合は
+データ整合性に影響するため、
+トランザクションや
+必要な行ロックによって対応する。
+
+---
+
+### 35.19 キャッシュを採用しない理由
+
+商品別月末評価額は
+利用者が直接変更する業務データである。
+
+更新直後に
+最新値を参照できる必要があるため、
+Phase1では
+アプリケーションキャッシュを
+採用しない。
+
+VAL-003成功後は、
+必要に応じて
+VAL-001を再取得する。
+
+---
+
+## 36. 関連ドキュメント
+
+- [API共通方針](../../api-common-policy.md)
+- [API一覧](../../api-list.md)
+- [エラーコード一覧](../../error-codes.md)
+- [機能要件](../../../requirements/functional-requirements.md)
+- [ユビキタス言語集](../../../requirements/glossary.md)
+- [エンティティ定義](../../../requirements/entities.md)
+- [テーブル定義書](../../../database/table-definition.md)
+- [ER図](../../../database/er-diagram-phase1.md)
