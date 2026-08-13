@@ -101,11 +101,11 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| INC-001 | 手取り収入 | 手取り収入一覧取得 | GET | `/api/v1/net-incomes` | 対象年月ごとの手取り収入一覧を取得する | `net_incomes` | 9.5 一覧表示 | [INC-001](./details/net-incomes.md#inc-001-手取り収入一覧取得) |
-| INC-002 | 手取り収入 | 手取り収入登録 | POST | `/api/v1/net-incomes` | 対象年月の手取り収入を登録する | `net_incomes` | 9.2 登録 | [INC-002](./details/net-incomes.md#inc-002-手取り収入登録) |
-| INC-003 | 手取り収入 | 手取り収入詳細取得 | GET | `/api/v1/net-incomes/{netIncomeId}` | 指定した手取り収入の詳細を取得する | `net_incomes` | 9. 手取り収入管理 | [INC-003](./details/net-incomes.md#inc-003-手取り収入詳細取得) |
-| INC-004 | 手取り収入 | 手取り収入更新 | PATCH | `/api/v1/net-incomes/{netIncomeId}` | 手取り収入および備考を更新する | `net_incomes` | 9.3 編集 | [INC-004](./details/net-incomes.md#inc-004-手取り収入更新) |
-| INC-005 | 手取り収入 | 平均手取り収入取得 | GET | `/api/v1/net-incomes/average` | 指定した判定対象年月以前の連続する3か月の平均手取り収入を取得する | `net_incomes` | 9.6 平均手取り収入、9.7 判定対象、9.8 データ不足 | [INC-005](./details/net-incomes.md#inc-005-平均手取り収入取得) |
+| INC-001 | 手取り収入 | 手取り収入一覧取得 | GET | `/api/v1/net-incomes` | 対象年月ごとの手取り収入一覧を取得する | `net_incomes` | 9.5 一覧表示 | [INC-001](./details/net-incomes/inc-001-list.md) |
+| INC-002 | 手取り収入 | 手取り収入登録 | POST | `/api/v1/net-incomes` | 対象年月の手取り収入を登録する | `net_incomes` | 9.2 登録 | [INC-002](./details/net-incomes/inc-002-create.md) |
+| INC-003 | 手取り収入 | 手取り収入詳細取得 | GET | `/api/v1/net-incomes/{netIncomeId}` | 指定した手取り収入の詳細を取得する | `net_incomes` | 9. 手取り収入管理 | [INC-003](./details/net-incomes/inc-003-detail.md) |
+| INC-004 | 手取り収入 | 手取り収入更新 | PATCH | `/api/v1/net-incomes/{netIncomeId}` | 手取り収入および備考を更新する | `net_incomes` | 9.3 編集 | [INC-004](./details/net-incomes/inc-004-update.md) |
+| INC-005 | 手取り収入 | 平均手取り収入取得 | GET | `/api/v1/net-incomes/average` | 指定した判定対象年月以前の連続する3か月の平均手取り収入を取得する | `net_incomes` | 9.6 平均手取り収入、9.7 判定対象、9.8 データ不足 | [INC-005](./details/net-incomes/inc-005-average.md) |
 
 ---
 
