@@ -158,9 +158,9 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| AST-001 | 資産状況 | 現在資産状況取得 | GET | `/api/v1/asset-summaries/current` | 最新の確定済み対象年月における総資産と内訳を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings` | 8.2 現在の資産状況、8.3 資産口座別資産状況、8.4 保有商品別資産状況 | [AST-001](./details/asset-views.md#ast-001-現在資産状況取得) |
-| AST-002 | 資産状況 | 指定年月資産状況取得 | GET | `/api/v1/asset-summaries/{targetYearMonth}` | 指定した確定済み対象年月の総資産と内訳を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings` | 8.2〜8.5 | [AST-002](./details/asset-views.md#ast-002-指定年月資産状況取得) |
-| AST-003 | 資産推移 | 資産推移取得 | GET | `/api/v1/asset-trends` | 指定期間の総資産、利用可能資産、資産口座別または保有商品別の推移を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings` | 8.6 前月比較、8.7 資産推移、8.8 表示対象期間 | [AST-003](./details/asset-views.md#ast-003-資産推移取得) |
+| AST-001 | 資産状況 | 現在資産状況取得 | GET | `/api/v1/asset-summaries/current` | 最新の確定済み対象年月における総資産と内訳を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings` | 8.2 現在の資産状況、8.3 資産口座別資産状況、8.4 保有商品別資産状況 | [AST-001](./details/asset-views/ast-001-list.md) |
+| AST-002 | 資産状況 | 指定年月資産状況取得 | GET | `/api/v1/asset-summaries/{targetYearMonth}` | 指定した確定済み対象年月の総資産と内訳を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings` | 8.2〜8.5 | [AST-002](./details/asset-views/ast-002-create.md) |
+| AST-003 | 資産推移 | 資産推移取得 | GET | `/api/v1/asset-trends` | 指定期間の総資産、利用可能資産、資産口座別または保有商品別の推移を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings` | 8.6 前月比較、8.7 資産推移、8.8 表示対象期間 | [AST-003](./details/asset-views/ast-003-update.md) |
 
 ---
 
