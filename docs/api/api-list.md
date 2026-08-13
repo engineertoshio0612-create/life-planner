@@ -126,11 +126,11 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| SNP-001 | 月末資産状況 | 月末資産状況一覧取得 | GET | `/api/v1/month-end-asset-snapshots` | 対象年月ごとの確定状態、登録済み件数、未登録件数などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.11 一覧表示 | [SNP-001](./docs/api/details/objectives/obj-001-list.md) |
-| SNP-002 | 月末資産状況 | 月末資産状況作成 | POST | `/api/v1/month-end-asset-snapshots` | 指定した対象年月の未確定な月末資産状況を作成する | `month_end_asset_snapshots` | 6.3 対象年月、7.2 確定対象 | [SNP-002](./details/month-end-assets.md#snp-002-月末資産状況作成) |
-| SNP-003 | 月末資産状況 | 月末資産状況詳細取得 | GET | `/api/v1/month-end-asset-snapshots/{snapshotId}` | 月末資産状況、登録済み残高、未登録資産などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_accounts`、`holding_assets` | 7.4 確定順序、7.5 未登録資産の表示、7.11 一覧表示 | [SNP-003](./details/month-end-assets.md#snp-003-月末資産状況詳細取得) |
-| SNP-004 | 月末資産状況 | 月末資産状況確定 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/confirm` | 確定条件を検証し、対象年月の月末資産状況を確定する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.3 確定条件、7.4 確定順序、7.6 確定 | [SNP-004](./details/month-end-assets.md#snp-004-月末資産状況確定) |
-| SNP-005 | 月末資産状況 | 月末資産状況確定解除 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/unconfirm` | 最新の確定済み月末資産状況を未確定へ戻す | `month_end_asset_snapshots` | 7.7 確定解除 | [SNP-005](./details/month-end-assets.md#snp-005-月末資産状況確定解除) |
+| SNP-001 | 月末資産状況 | 月末資産状況一覧取得 | GET | `/api/v1/month-end-asset-snapshots` | 対象年月ごとの確定状態、登録済み件数、未登録件数などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.11 一覧表示 | [SNP-001](./details/month-end-asset-snapshots/snp-001-list.md) |
+| SNP-002 | 月末資産状況 | 月末資産状況作成 | POST | `/api/v1/month-end-asset-snapshots` | 指定した対象年月の未確定な月末資産状況を作成する | `month_end_asset_snapshots` | 6.3 対象年月、7.2 確定対象 | [SNP-002](./details/month-end-asset-snapshots/snp-002-create.md) |
+| SNP-003 | 月末資産状況 | 月末資産状況詳細取得 | GET | `/api/v1/month-end-asset-snapshots/{snapshotId}` | 月末資産状況、登録済み残高、未登録資産などを取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_accounts`、`holding_assets` | 7.4 確定順序、7.5 未登録資産の表示、7.11 一覧表示 | [SNP-003](./details/month-end-asset-snapshots/snp-003-detail.md) |
+| SNP-004 | 月末資産状況 | 月末資産状況確定 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/confirm` | 確定条件を検証し、対象年月の月末資産状況を確定する | `month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values` | 7.3 確定条件、7.4 確定順序、7.6 確定 | [SNP-004](./details/month-end-asset-snapshots/snp-004-confirm.md) |
+| SNP-005 | 月末資産状況 | 月末資産状況確定解除 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/unconfirm` | 最新の確定済み月末資産状況を未確定へ戻す | `month_end_asset_snapshots` | 7.7 確定解除 | [SNP-005](./details/month-end-asset-snapshots/snp-005-unconfirm.md) |
 
 ---
 
