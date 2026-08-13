@@ -90,11 +90,11 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HLD-001 | 保有商品 | 保有商品一覧取得 | GET | `/api/v1/holding-assets` | 操作対象利用者の保有商品一覧を取得する | `holding_assets`、`asset_accounts` | 5.8 一覧表示、5.9 表示順 | [HLD-001](./details/holding-assets.md#has-001-保有商品一覧取得) |
-| HLD-002 | 保有商品 | 保有商品登録 | POST | `/api/v1/holding-assets` | 商品単位で管理する資産口座へ保有商品を登録する | `holding_assets`、`asset_accounts` | 5.2 登録 | [HLD-002](./details/holding-assets.md#has-002-保有商品登録) |
-| HLD-003 | 保有商品 | 保有商品詳細取得 | GET | `/api/v1/holding-assets/{holdingAssetId}` | 指定した保有商品の詳細を取得する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-003](./details/holding-assets.md#has-003-保有商品詳細取得) |
-| HLD-004 | 保有商品 | 保有商品更新 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品名、商品種別および備考を更新する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-004](./details/holding-assets.md#has-004-保有商品更新) |
-| HLD-005 | 保有商品 | 保有商品無効化 | PATCH | `/api/v1/holding-assets/{holdingAssetId}/disable` | 指定した保有商品を無効化する | `holding_assets` | 5.7 無効化 | [HLD-005](./details/holding-assets.md#has-005-保有商品無効化) |
+| HLD-001 | 保有商品 | 保有商品一覧取得 | GET | `/api/v1/holding-assets` | 操作対象利用者の保有商品一覧を取得する | `holding_assets`、`asset_accounts` | 5.8 一覧表示、5.9 表示順 | [HLD-001](./details/holding-assets/hld-001-list.md) |
+| HLD-002 | 保有商品 | 保有商品登録 | POST | `/api/v1/holding-assets` | 商品単位で管理する資産口座へ保有商品を登録する | `holding_assets`、`asset_accounts` | 5.2 登録 | [HLD-002](./details/holding-assets/hld-002-create.md) |
+| HLD-003 | 保有商品 | 保有商品詳細取得 | GET | `/api/v1/holding-assets/{holdingAssetId}` | 指定した保有商品の詳細を取得する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-003](./details/holding-assets/hld-003-detail.md) |
+| HLD-004 | 保有商品 | 保有商品更新 | PATCH | `/api/v1/holding-assets/{holdingAssetId}` | 保有商品名、商品種別および備考を更新する | `holding_assets`、`asset_accounts` | 5.3 編集 | [HLD-004](./details/holding-assets/hld-004-update.md) |
+| HLD-005 | 保有商品 | 保有商品無効化 | PATCH | `/api/v1/holding-assets/{holdingAssetId}/disable` | 指定した保有商品を無効化する | `holding_assets` | 5.7 無効化 | [HLD-005](./details/holding-assets/hld-005-disable.md) |
 ---
 
 ## 7. 手取り収入API
