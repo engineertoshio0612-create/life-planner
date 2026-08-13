@@ -78,13 +78,12 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| ACC-001 | 資産口座 | 資産口座一覧取得 | GET | `/api/v1/asset-accounts` | 操作対象利用者の資産口座一覧を取得する | `asset_accounts`、`asset_account_available_settings` | 4.9 一覧表示、4.10 表示順 | [ACC-001](./details/asset-accounts.md#acc-001-資産口座一覧取得) |
-| ACC-002 | 資産口座 | 資産口座登録 | POST | `/api/v1/asset-accounts` | 資産口座と初期の利用可能資産設定を登録する | `asset_accounts`、`asset_account_available_settings` | 4.2 登録 | [ACC-002](./details/asset-accounts.md#acc-002-資産口座登録) |
-| ACC-003 | 資産口座 | 資産口座詳細取得 | GET | `/api/v1/asset-accounts/{assetAccountId}` | 指定した資産口座の詳細を取得する | `asset_accounts`、`asset_account_available_settings` | 4. 資産口座管理 | [ACC-003](./details/asset-accounts.md#acc-003-資産口座詳細取得) |
-| ACC-004 | 資産口座 | 資産口座更新 | PATCH | `/api/v1/asset-accounts/{assetAccountId}` | 資産口座名、備考、利用状態などの更新可能項目を変更する | `asset_accounts` | 4.3 編集、4.8 無効化 | [ACC-004](./details/asset-accounts.md#acc-004-資産口座更新) |
-| ACC-005 | 資産口座 | 利用可能資産設定履歴取得 | GET | `/api/v1/asset-accounts/{assetAccountId}/available-settings` | 資産口座の利用可能資産区分の期間履歴を取得する | `asset_accounts`、`asset_account_available_settings` | 4.6 利用可能資産区分、4.7 変更 | [ACC-005](./details/asset-accounts.md#acc-005-利用可能資産設定履歴取得) |
-| ACC-006 | 資産口座 | 利用可能資産設定登録 | POST | `/api/v1/asset-accounts/{assetAccountId}/available-settings` | 適用開始年月を指定して新しい利用可能資産設定を登録する | `asset_accounts`、`asset_account_available_settings` | 4.7 利用可能資産区分の変更 | [ACC-006](./details/asset-accounts.md#acc-006-利用可能資産設定登録) |
-
+| ACC-001 | 資産口座 | 資産口座一覧取得 | GET | `/api/v1/asset-accounts` | 操作対象利用者の資産口座一覧を取得する | `asset_accounts`、`asset_account_available_settings` | 4.9 一覧表示、4.10 表示順 | [ACC-001](./details/asset-accounts/acc-001-list.md) |
+| ACC-002 | 資産口座 | 資産口座登録 | POST | `/api/v1/asset-accounts` | 資産口座と初期の利用可能資産設定を登録する | `asset_accounts`、`asset_account_available_settings` | 4.2 登録 | [ACC-002](./details/asset-accounts/acc-002-create.md) |
+| ACC-003 | 資産口座 | 資産口座詳細取得 | GET | `/api/v1/asset-accounts/{assetAccountId}` | 指定した資産口座の詳細を取得する | `asset_accounts`、`asset_account_available_settings` | 4. 資産口座管理 | [ACC-003](./details/asset-accounts/acc-003-detail.md) |
+| ACC-004 | 資産口座 | 資産口座更新 | PATCH | `/api/v1/asset-accounts/{assetAccountId}` | 資産口座名、備考、利用状態などの更新可能項目を変更する | `asset_accounts` | 4.3 編集、4.8 無効化 | [ACC-004](./details/asset-accounts/acc-004-update.md) |
+| ACC-005 | 資産口座 | 利用可能資産設定履歴取得 | GET | `/api/v1/asset-accounts/{assetAccountId}/available-settings` | 資産口座の利用可能資産区分の期間履歴を取得する | `asset_accounts`、`asset_account_available_settings` | 4.6 利用可能資産区分、4.7 変更 | [ACC-005](./details/asset-accounts/acc-005-available-setting-history.md) |
+| ACC-006 | 資産口座 | 利用可能資産設定登録 | POST | `/api/v1/asset-accounts/{assetAccountId}/available-settings` | 適用開始年月を指定して新しい利用可能資産設定を登録する | `asset_accounts`、`asset_account_available_settings` | 4.7 利用可能資産区分の変更 | [ACC-006](./details/asset-accounts/acc-006-create-available-setting.md) |
 ---
 
 ## 6. 保有商品API
