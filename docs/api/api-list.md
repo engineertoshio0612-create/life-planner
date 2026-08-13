@@ -138,9 +138,9 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| BAL-001 | 月末資産残高 | 月末資産残高一覧取得 | GET | `/api/v1/api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances` | 指定した月末資産状況に属する口座単位の残高一覧を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`asset_accounts` | 6.4 口座単位での登録、6.10 一覧表示 | [BAL-001](./details/month-end-assets.md#bal-001-月末資産残高一覧取得) |
-| BAL-002 | 月末資産残高 | 月末資産残高登録 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances` | 指定した資産口座の月末残高を登録する | `month_end_asset_snapshots`、`month_end_asset_balances`、`asset_accounts` | 6.4 口座単位での登録 | [BAL-002](./details/month-end-assets.md#bal-002-月末資産残高登録) |
-| BAL-003 | 月末資産残高 | 月末資産残高更新 | PATCH | `/api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances/{assetAccountId}` | 未確定の対象年月に登録された月末資産残高を更新する | `month_end_asset_snapshots`、`month_end_asset_balances` | 6.8 修正、7.9 修正 | [BAL-003](./details/month-end-assets.md#bal-003-月末資産残高更新) |
+| BAL-001 | 月末資産残高 | 月末資産残高一覧取得 | GET | `/api/v1/api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances` | 指定した月末資産状況に属する口座単位の残高一覧を取得する | `month_end_asset_snapshots`、`month_end_asset_balances`、`asset_accounts` | 6.4 口座単位での登録、6.10 一覧表示 | [BAL-001](./details/asset-balances/bal-001-list.md) |
+| BAL-002 | 月末資産残高 | 月末資産残高登録 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances` | 指定した資産口座の月末残高を登録する | `month_end_asset_snapshots`、`month_end_asset_balances`、`asset_accounts` | 6.4 口座単位での登録 | [BAL-002](./details/asset-balances/bal-002-create.md) |
+| BAL-003 | 月末資産残高 | 月末資産残高更新 | PATCH | `/api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances/{assetAccountId}` | 未確定の対象年月に登録された月末資産残高を更新する | `month_end_asset_snapshots`、`month_end_asset_balances` | 6.8 修正、7.9 修正 | [BAL-003](./details/asset-balances/bal-003-update.md) |
 
 ---
 
@@ -148,9 +148,9 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| VAL-001 | 商品別月末評価額 | 商品別月末評価額一覧取得 | GET | `/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values` | 指定した月末資産状況に属する商品別評価額一覧を取得する | `month_end_asset_snapshots`、`month_end_holding_values`、`holding_assets` | 6.5 商品単位での登録、6.10 一覧表示 | [VAL-001](./details/month-end-assets.md#val-001-商品別月末評価額一覧取得) |
-| VAL-002 | 商品別月末評価額 | 商品別月末評価額登録 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values` | 指定した保有商品の月末評価額を登録する | `month_end_asset_snapshots`、`month_end_holding_values`、`holding_assets` | 6.5 商品単位での登録 | [VAL-002](./details/month-end-assets.md#val-002-商品別月末評価額登録) |
-| VAL-003 | 商品別月末評価額 | 商品別月末評価額更新 | PATCH | `/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values/{holdingAssetId}` | 未確定の対象年月に登録された商品別月末評価額を更新する | `month_end_asset_snapshots`、`month_end_holding_values` | 6.8 修正、7.9 修正 | [VAL-003](./details/month-end-assets.md#val-003-商品別月末評価額更新) |
+| VAL-001 | 商品別月末評価額 | 商品別月末評価額一覧取得 | GET | `/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values` | 指定した月末資産状況に属する商品別評価額一覧を取得する | `month_end_asset_snapshots`、`month_end_holding_values`、`holding_assets` | 6.5 商品単位での登録、6.10 一覧表示 | [VAL-001](./details/holding-values/val-001-list.md) |
+| VAL-002 | 商品別月末評価額 | 商品別月末評価額登録 | POST | `/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values` | 指定した保有商品の月末評価額を登録する | `month_end_asset_snapshots`、`month_end_holding_values`、`holding_assets` | 6.5 商品単位での登録 | [VAL-002](./details/holding-values/val-002-create.md) |
+| VAL-003 | 商品別月末評価額 | 商品別月末評価額更新 | PATCH | `/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values/{holdingAssetId}` | 未確定の対象年月に登録された商品別月末評価額を更新する | `month_end_asset_snapshots`、`month_end_holding_values` | 6.8 修正、7.9 修正 | [VAL-003](./details/holding-values/val-003-update.md) |
 
 ---
 
