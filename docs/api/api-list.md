@@ -179,12 +179,12 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| CSV-001 | CSVインポート | 月末資産残高CSVテンプレート取得 | GET | `/api/v1/month-end-asset-balances/csv-template` | 口座単位の月末資産残高CSVテンプレートを取得する | `asset_accounts` | 12.3 CSVテンプレート、12.6 CSVフォーマット | [CSV-001](./details/csv-imports.md#csv-001-月末資産残高csvテンプレート取得) |
-| CSV-002 | CSVインポート | 月末資産残高CSVプレビュー | POST | `/api/v1/month-end-asset-balances/imports/preview` | CSVを検証し、保存せずに登録予定内容とエラーを返却する | `asset_accounts`、`month_end_asset_snapshots`、`month_end_asset_balances` | 12.7 入力チェック、12.8 プレビュー | [CSV-002](./details/csv-imports.md#csv-002-月末資産残高csvプレビュー) |
-| CSV-003 | CSVインポート | 月末資産残高CSV登録 | POST | `/api/v1/month-end-asset-balances/imports` | 検証済みCSVの月末資産残高をトランザクションで一括登録する | `asset_accounts`、`month_end_asset_snapshots`、`month_end_asset_balances` | 12.9 登録、12.10 エラー、12.13 確定済みデータ | [CSV-003](./details/csv-imports.md#csv-003-月末資産残高csv登録) |
-| CSV-004 | CSVインポート | 商品別月末評価額CSVテンプレート取得 | GET | `/api/v1/month-end-holding-values/csv-template` | 商品単位の商品別月末評価額CSVテンプレートを取得する | `asset_accounts`、`holding_assets` | 12.3 CSVテンプレート、12.6 CSVフォーマット | [CSV-004](./details/csv-imports.md#csv-004-商品別月末評価額csvテンプレート取得) |
-| CSV-005 | CSVインポート | 商品別月末評価額CSVプレビュー | POST | `/api/v1/month-end-holding-values/imports/preview` | CSVを検証し、保存せずに登録予定内容とエラーを返却する | `asset_accounts`、`holding_assets`、`month_end_asset_snapshots`、`month_end_holding_values` | 12.7 入力チェック、12.8 プレビュー | [CSV-005](./details/csv-imports.md#csv-005-商品別月末評価額csvプレビュー) |
-| CSV-006 | CSVインポート | 商品別月末評価額CSV登録 | POST | `/api/v1/month-end-holding-values/imports` | 検証済みCSVの商品別月末評価額をトランザクションで一括登録する | `asset_accounts`、`holding_assets`、`month_end_asset_snapshots`、`month_end_holding_values` | 12.9 登録、12.10 エラー、12.13 確定済みデータ | [CSV-006](./details/csv-imports.md#csv-006-商品別月末評価額csv登録) |
+| CSV-001 | CSVインポート | 月末資産残高CSVテンプレート取得 | GET | `/api/v1/month-end-asset-balances/csv-template` | 口座単位の月末資産残高CSVテンプレートを取得する | `asset_accounts` | 12.3 CSVテンプレート、12.6 CSVフォーマット | [CSV-001](./details/csv-imports/csv-001-template.md) |
+| CSV-002 | CSVインポート | 月末資産残高CSVプレビュー | POST | `/api/v1/month-end-asset-balances/imports/preview` | CSVを検証し、保存せずに登録予定内容とエラーを返却する | `asset_accounts`、`month_end_asset_snapshots`、`month_end_asset_balances` | 12.7 入力チェック、12.8 プレビュー | [CSV-002](./details/csv-imports/csv-003-create.md) |
+| CSV-003 | CSVインポート | 月末資産残高CSV登録 | POST | `/api/v1/month-end-asset-balances/imports` | 検証済みCSVの月末資産残高をトランザクションで一括登録する | `asset_accounts`、`month_end_asset_snapshots`、`month_end_asset_balances` | 12.9 登録、12.10 エラー、12.13 確定済みデータ | [CSV-003](./details/csv-imports/csv-003-create.md) |
+| CSV-004 | CSVインポート | 商品別月末評価額CSVテンプレート取得 | GET | `/api/v1/month-end-holding-values/csv-template` | 商品単位の商品別月末評価額CSVテンプレートを取得する | `asset_accounts`、`holding_assets` | 12.3 CSVテンプレート、12.6 CSVフォーマット | [CSV-004](./details/csv-imports/csv-004-template.md) |
+| CSV-005 | CSVインポート | 商品別月末評価額CSVプレビュー | POST | `/api/v1/month-end-holding-values/imports/preview` | CSVを検証し、保存せずに登録予定内容とエラーを返却する | `asset_accounts`、`holding_assets`、`month_end_asset_snapshots`、`month_end_holding_values` | 12.7 入力チェック、12.8 プレビュー | [CSV-005](.docs/api/details/csv-imports/csv-005-preview.md) |
+| CSV-006 | CSVインポート | 商品別月末評価額CSV登録 | POST | `/api/v1/month-end-holding-values/imports` | 検証済みCSVの商品別月末評価額をトランザクションで一括登録する | `asset_accounts`、`holding_assets`、`month_end_asset_snapshots`、`month_end_holding_values` | 12.9 登録、12.10 エラー、12.13 確定済みデータ | [CSV-006](./details/csv-imports/csv-006-create.md) |
 
 ---
 
