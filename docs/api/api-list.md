@@ -168,10 +168,10 @@ API詳細設計書、
 
 | API ID | 機能分類 | API名 | HTTPメソッド | URL | 概要 | 主な関連テーブル | 対応する機能要件 | 詳細設計書 |
 |---|---|---|---|---|---|---|---|---|
-| ASM-001 | 目的達成判定 | 目的達成判定プレビュー | POST | `/api/v1/objectives/{objectiveId}/assessment-previews` | 判定結果を保存せずに目的達成可否と計算根拠を算出する | `objectives`、`month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings`、`net_incomes` | 11.2〜11.8 | [ASM-001](./details/assessments.md#asm-001-目的達成判定プレビュー) |
-| ASM-002 | 目的達成判定 | 目的達成判定結果保存 | POST | `/api/v1/objectives/{objectiveId}/assessments` | 目的達成判定を実行し、判定結果と計算根拠を履歴として保存する | `objectives`、`month_end_asset_snapshots`、`assessment_histories`、`net_incomes` | 11.9 判定結果の保存、11.11 再判定 | [ASM-002](./details/assessments.md#asm-002-目的達成判定結果保存) |
-| ASM-003 | 目的達成判定 | 判定履歴一覧取得 | GET | `/api/v1/assessment-histories` | 操作対象利用者の判定履歴を取得する | `assessment_histories`、`objectives`、`month_end_asset_snapshots` | 11.10 判定履歴 | [ASM-003](./details/assessments.md#asm-003-判定履歴一覧取得) |
-| ASM-004 | 目的達成判定 | 判定履歴詳細取得 | GET | `/api/v1/assessment-histories/{assessmentHistoryId}` | 指定した判定履歴と判定時点の計算根拠を取得する | `assessment_histories`、`objectives`、`month_end_asset_snapshots` | 11.8 判定結果の表示、11.10 判定履歴 | [ASM-004](./details/assessments.md#asm-004-判定履歴詳細取得) |
+| ASM-001 | 目的達成判定 | 目的達成判定プレビュー | POST | `/api/v1/objectives/{objectiveId}/assessment-previews` | 判定結果を保存せずに目的達成可否と計算根拠を算出する | `objectives`、`month_end_asset_snapshots`、`month_end_asset_balances`、`month_end_holding_values`、`asset_account_available_settings`、`net_incomes` | 11.2〜11.8 | [ASM-001](./details/assessments/asm-001-preview.md) |
+| ASM-002 | 目的達成判定 | 目的達成判定結果保存 | POST | `/api/v1/objectives/{objectiveId}/assessments` | 目的達成判定を実行し、判定結果と計算根拠を履歴として保存する | `objectives`、`month_end_asset_snapshots`、`assessment_histories`、`net_incomes` | 11.9 判定結果の保存、11.11 再判定 | [ASM-002](./details/assessments/asm-002-create.md) |
+| ASM-003 | 目的達成判定 | 判定履歴一覧取得 | GET | `/api/v1/assessment-histories` | 操作対象利用者の判定履歴を取得する | `assessment_histories`、`objectives`、`month_end_asset_snapshots` | 11.10 判定履歴 | [ASM-003](./details/assessments/asm-003-list.md) |
+| ASM-004 | 目的達成判定 | 判定履歴詳細取得 | GET | `/api/v1/assessment-histories/{assessmentHistoryId}` | 指定した判定履歴と判定時点の計算根拠を取得する | `assessment_histories`、`objectives`、`month_end_asset_snapshots` | 11.8 判定結果の表示、11.10 判定履歴 | [ASM-004](./details/assessments/asm-004-detail.md) |
 
 ---
 
