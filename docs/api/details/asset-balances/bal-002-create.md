@@ -1728,776 +1728,135 @@ VAL-002 商品別月末評価額登録APIで行う。
 
 ---
 
-## 27. テスト観点
+## 27. 設計上の補足
 
-### 27.1 正常系
+### 27.1 月末資産状況を起点として登録する
 
-- 有効な入力値で月末資産残高を登録できること
-- `201 Created`で返却されること
-- `month_end_asset_balances`へ1件登録されること
-- `month_end_asset_snapshot_id`に指定した月末資産状況IDが設定されること
-- `asset_account_id`に指定した資産口座IDが設定されること
-- `balance`に指定した金額が設定されること
-- 操作対象利用者に属するデータとして登録されること
-- 月末資産状況の`confirmed`が変更されないこと
-- 商品別月末評価額が登録されないこと
-- 目的達成判定が自動実行されないこと
-
----
-
-### 27.2 snapshotId
-
-- 正しい`snapshotId`を指定して登録できること
-- `snapshotId = 1`を指定できること
-- `snapshotId = 0`でバリデーションエラーとなること
-- 負数でバリデーションエラーとなること
-- 小数でバリデーションエラーとなること
-- 文字列`abc`でバリデーションエラーとなること
-- ID形式不正時に`422 Unprocessable Entity`となること
-- ID形式不正時に`VALIDATION_ERROR`となること
-
----
-
-### 27.3 assetAccountId
-
-- 正しい`assetAccountId`を指定して登録できること
-- `assetAccountId`未指定で`422 Unprocessable Entity`となること
-- `null`でバリデーションエラーとなること
-- 空文字でバリデーションエラーとなること
-- `"0"`でバリデーションエラーとなること
-- 負数形式でバリデーションエラーとなること
-- `"abc"`でバリデーションエラーとなること
-- 数値型で送信した場合の扱いがAPI仕様と一致すること
-
----
-
-### 27.4 balance
-
-以下を確認する。
-
-- 正の整数を登録できること
-- `balance = 0`を登録できること
-- `balance = 1`を登録できること
-- 保持可能な最大値を登録できること
-- `balance`未指定でバリデーションエラーとなること
-- `balance = null`でバリデーションエラーとなること
-- `balance = -1`でバリデーションエラーとなること
-- 小数値でバリデーションエラーとなること
-- 数値文字列でバリデーションエラーとなること
-- 保持可能な範囲を超える値でバリデーションエラーとなること
-
----
-
-### 27.5 月末資産状況の存在確認
-
-- 存在する月末資産状況へ登録できること
-- 存在しない`snapshotId`で`404 Not Found`となること
-- 存在しない場合に`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`となること
-- 存在しない場合に月末資産残高が登録されないこと
-
----
-
-### 27.6 月末資産状況の利用者境界
-
-- 操作対象利用者に属する月末資産状況へ登録できること
-- 他利用者に属する月末資産状況へ登録できないこと
-- 他利用者の`snapshotId`で`404 Not Found`となること
-- 他利用者の場合に`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`となること
-- 他利用者の月末資産状況が存在することをレスポンスから判別できないこと
-- 月末資産状況の検索条件に`user_id`が含まれていること
-
----
-
-### 27.7 資産口座の存在確認
-
-- 存在する資産口座を指定して登録できること
-- 存在しない`assetAccountId`で`404 Not Found`となること
-- 存在しない場合に`ASSET_ACCOUNT_NOT_FOUND`となること
-- 存在しない資産口座を指定した場合に月末資産残高が登録されないこと
-
----
-
-### 27.8 資産口座の利用者境界
-
-- 操作対象利用者に属する資産口座へ登録できること
-- 他利用者に属する資産口座へ登録できないこと
-- 他利用者の資産口座IDで`404 Not Found`となること
-- 他利用者の場合に`ASSET_ACCOUNT_NOT_FOUND`となること
-- 他利用者の資産口座が存在することをレスポンスから判別できないこと
-- 資産口座の検索条件に`user_id`が含まれていること
-
----
-
-### 27.9 月末資産状況の確定状態
-
-未確定の場合：
+BAL-002では、月末資産残高を資産口座単独のリソースとして登録するのではなく、指定された月末資産状況に対する子リソースとして登録する。
 
 ```text
-confirmed = false
-```
-
-について、
-
-- 月末資産残高を登録できること
-
-確定済みの場合：
-
-```text
-confirmed = true
-```
-
-について、
-
-- 月末資産残高を登録できないこと
-- `409 Conflict`となること
-- `MONTH_END_ASSET_SNAPSHOT_CONFIRMED`となること
-- 月末資産残高が新規作成されないこと
-
----
-
-### 27.10 対象年月時点の利用可能状態
-
-資産口座の利用可能期間が
-対象年月によって異なるデータを用意する。
-
-以下を確認する。
-
-- 対象年月時点で月末資産管理対象の資産口座へ登録できること
-- 対象年月時点で月末資産管理対象ではない資産口座へ登録できないこと
-- 対象外の場合に`409 Conflict`となること
-- 対象外の場合に`ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH`となること
-- 現在の利用状態だけを使用して過去月の登録可否を判定しないこと
-- 過去月では対象だが現在は対象外の資産口座へ、該当過去月で登録できること
-- 現在は対象だが対象年月時点では対象外の資産口座へ登録できないこと
-
----
-
-### 27.11 残高記録単位
-
-残高記録単位が
-口座単位の場合：
-
-```text
-balance_recording_unit = 口座単位
-```
-
-について、
-
-- BAL-002で登録できること
-
-商品単位の場合：
-
-```text
-balance_recording_unit = 商品単位
-```
-
-について、
-
-- BAL-002で登録できないこと
-- `409 Conflict`となること
-- `ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH`となること
-- 月末資産残高レコードが作成されないこと
-
----
-
-### 27.12 重複登録
-
-以下の組み合わせについて、
-すでに月末資産残高が存在する状態を用意する。
-
-```text
-month_end_asset_snapshot_id = 12
-asset_account_id = 3
-```
-
-以下を確認する。
-
-- 同じ組み合わせで新規登録できないこと
-- `409 Conflict`となること
-- `MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`となること
-- 既存レコードが更新されないこと
-- 新しいレコードが作成されないこと
-- `balance`が既存値と同じでもエラーとなること
-- `balance`が既存値と異なっていてもBAL-002では上書きされないこと
-- 変更が必要な場合はBAL-003を利用する設計になっていること
-
----
-
-### 27.13 UNIQUE制約
-
-同一の月末資産状況・資産口座について
-複数の登録要求を同時実行する。
-
-以下を確認する。
-
-- 最終的に1件のみ登録されること
-- UNIQUE制約によって重複登録が防止されること
-- 1件のリクエストが`201 Created`となること
-- 競合したリクエストが`409 Conflict`となること
-- UNIQUE制約違反が`MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`へ変換されること
-- PostgreSQLの制約名や内部エラーがレスポンスへ公開されないこと
-
----
-
-### 27.14 0円
-
-`balance = 0`を送信した場合について、
-以下を確認する。
-
-- 正常に登録できること
-- `201 Created`となること
-- データベースへ`0`として保存されること
-- レスポンスで`balance = 0`となること
-- `0`が未入力として扱われないこと
-- `null`へ変換されないこと
-
----
-
-### 27.15 レスポンス契約
-
-- JSONフィールド名がcamelCaseであること
-- `data`がobjectで返却されること
-- `assetAccountId`が文字列で返却されること
-- `balance`がintegerで返却されること
-- `balance = 0`が整数の`0`として返却されること
-- 月末資産残高IDがレスポンスへ含まれないこと
-- `snapshotId`がレスポンスへ含まれないこと
-- `userId`がレスポンスへ含まれないこと
-- `targetYearMonth`がレスポンスへ含まれないこと
-- `confirmed`がレスポンスへ含まれないこと
-- 資産口座名がレスポンスへ含まれないこと
-- `createdAt`がレスポンスへ含まれないこと
-- `updatedAt`がレスポンスへ含まれないこと
-- DB内部のsnake_caseのカラム名がそのまま公開されないこと
-
----
-
-### 27.16 トランザクション
-
-- 業務条件の最終確認から月末資産残高登録までが同一トランザクション内で実行されること
-- 登録途中で例外が発生した場合にロールバックされること
-- 業務条件を満たさない場合に月末資産残高が登録されないこと
-- 登録失敗時に不完全なレコードが残らないこと
-
----
-
-### 27.17 副作用
-
-本API実行によって、
-以下が変更されないことを確認する。
-
-- `month_end_asset_snapshots.confirmed`
-- `asset_accounts`
-- `asset_account_available_settings`
-- `holding_assets`
-- `month_end_holding_values`
-- `assessment_histories`
-
-以下の副作用が
-発生しないことを確認する。
-
-- 月末資産状況を自動確定しない
-- 商品別月末評価額を自動登録しない
-- 目的達成判定を自動実行しない
-- 過去の目的達成判定履歴を変更しない
-
----
-
-### 27.18 エラー時
-
-以下のエラー時に、
-月末資産残高が登録されないことを確認する。
-
-- `USER_CONTEXT_REQUIRED`
-- `INVALID_USER_ID`
-- `USER_NOT_FOUND`
-- `VALIDATION_ERROR`
-- `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
-- `MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
-- `ASSET_ACCOUNT_NOT_FOUND`
-- `ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH`
-- `ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH`
-- `MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`
-
----
-
-### 27.19 異常系
-
-- 想定外の例外で`500 Internal Server Error`となること
-- 想定外の例外発生時にトランザクションがロールバックされること
-- 共通エラーレスポンス形式で返却されること
-- エラーレスポンスとログに同じリクエストIDが記録されること
-- SQLがレスポンスへ含まれないこと
-- PostgreSQLの制約名がレスポンスへ含まれないこと
-- スタックトレースがレスポンスへ含まれないこと
-- 内部例外メッセージがレスポンスへ含まれないこと
-
----
-
-## 28. Laravel実装方針
-
-### 28.1 Action
-
-HTTPリクエストを受け付け、
-月末資産状況ID、
-登録対象の資産口座ID、
-月末資産残高および
-利用者コンテキストを取得する。
-
-Form Requestまたは入力用DTOから
-検証済みの入力値を受け取り、
-月末資産残高登録UseCaseを呼び出す。
-
-UseCaseから受け取った登録結果を、
-Responderへ渡す。
-
-以下の処理は、
-Actionへ直接記述しない。
-
-- `snapshotId`の形式検証
-- リクエストボディの単項目バリデーション
-- 利用者境界の判定
-- 月末資産状況の存在確認
-- 月末資産状況の確定状態確認
-- 資産口座の存在確認
-- 対象年月時点の利用可否判定
-- 残高記録単位の判定
-- 重複登録確認
-- 月末資産残高の登録
-- トランザクション制御
-- レスポンス生成処理
-
----
-
-### 28.2 UseCase
-
-月末資産残高登録の
-ユースケース処理を担当する。
-
-主な処理は、
-以下とする。
-
-- 操作対象利用者を受け取る
-- 月末資産状況IDを受け取る
-- 登録対象の資産口座IDを受け取る
-- 月末資産残高を受け取る
-- 月末資産状況を取得する
-- 月末資産状況が未確定であることを確認する
-- 資産口座を取得する
-- 対象年月時点で資産口座が月末資産管理対象であることを確認する
-- 資産口座の残高記録単位が口座単位であることを確認する
-- 同一月末資産状況・資産口座の月末資産残高が未登録であることを確認する
-- 月末資産残高を登録する
-- 登録結果を返却する
-
-指定された月末資産状況が存在しない場合、
-または操作対象利用者に属していない場合は、
-`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
-として扱う。
-
-指定された資産口座が存在しない場合、
-または操作対象利用者に属していない場合は、
-`ASSET_ACCOUNT_NOT_FOUND`
-として扱う。
-
----
-
-### 28.3 Form Request / DTO
-
-リクエストボディの
-形式および単項目バリデーションを担当する。
-
-検証対象は、
-以下とする。
-
-- `assetAccountId`
-- `balance`
-
-Form Requestでは、
-以下を検証する。
-
-#### assetAccountId
-
-- 必須であること
-- `null`ではないこと
-- 文字列であること
-- API共通方針で定めたID形式であること
-- 正の整数として扱えること
-
-#### balance
-
-- 必須であること
-- `null`ではないこと
-- integerであること
-- 0以上であること
-- データベースで保持可能な範囲であること
-
-業務状態に依存する以下の検証は、
-Form Requestでは行わない。
-
-- 月末資産状況の存在確認
-- 月末資産状況の確定状態確認
-- 資産口座の存在確認
-- 対象年月時点の利用可否確認
-- 残高記録単位確認
-- 重複登録確認
-
-検証済みの入力値は、
-入力用DTOへ変換して
-UseCaseへ渡す。
-
-例：
-
-```php
-final readonly class CreateMonthEndAssetBalanceInput
-{
-    public function __construct(
-        public string $assetAccountId,
-        public int $balance,
-    ) {
-    }
-}
-```
-
----
-
-### 28.4 Query
-
-月末資産残高登録に必要な
-データ取得を担当する。
-
-主な取得対象は、
-以下とする。
-
-- `month_end_asset_snapshots`
-- `asset_accounts`
-- `asset_account_available_settings`
-- `month_end_asset_balances`
-
-本APIでは、
-原則として以下を参照しない。
-
-- `holding_assets`
-- `month_end_holding_values`
-- `assessment_histories`
-
----
-
-### 28.5 月末資産状況取得
-
-登録対象となる月末資産状況は、
-必ず利用者境界を含めて取得する。
-
-```php
-$snapshot = MonthEndAssetSnapshot::query()
-    ->where('id', $snapshotId)
-    ->where('user_id', $userId)
-    ->first([
-        'id',
-        'user_id',
-        'target_year_month',
-        'confirmed',
-    ]);
-```
-
-以下のように、
-月末資産状況IDだけで
-取得してはならない。
-
-```php
-MonthEndAssetSnapshot::find($snapshotId);
-```
-
-取得できなかった場合は、
-以下を区別せず
-`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`
-として扱う。
-
-- 月末資産状況が存在しない
-- 他の利用者に属している
-
----
-
-### 28.6 確定状態確認
-
-取得した月末資産状況が
-未確定であることを確認する。
-
-```php
-if ($snapshot->confirmed) {
-    throw new
-        MonthEndAssetSnapshotConfirmedException();
-}
-```
-
-確定済みの場合は、
-
-`MONTH_END_ASSET_SNAPSHOT_CONFIRMED`
-
-として扱う。
-
-月末資産残高を登録するために、
-本API内で自動的に
-確定解除してはならない。
-
----
-
-### 28.7 資産口座取得
-
-登録対象となる資産口座は、
-必ず利用者境界を含めて取得する。
-
-```php
-$assetAccount = AssetAccount::query()
-    ->where(
-        'id',
-        $input->assetAccountId,
-    )
-    ->where(
-        'user_id',
-        $userId,
-    )
-    ->first();
-```
-
-以下のように、
-資産口座IDだけで
-取得してはならない。
-
-```php
-AssetAccount::find(
-    $input->assetAccountId,
-);
-```
-
-取得できなかった場合は、
-以下を区別せず
-`ASSET_ACCOUNT_NOT_FOUND`
-として扱う。
-
-- 資産口座が存在しない
-- 他の利用者に属している
-
----
-
-### 28.8 対象年月時点の利用可否判定
-
-月末資産状況の
-`target_year_month`を使用して、
-資産口座が対象年月時点で
-月末資産管理対象であることを確認する。
-
-判定には、
-`asset_account_available_settings`
-を使用する。
-
-概念的には、
-以下を判定する。
-
-```text
-assetAccountId
-+
-snapshot.target_year_month
+month_end_asset_snapshots
     ↓
-対象年月時点で利用可能か
+month_end_asset_balances
 ```
 
-対象年月時点で
-月末資産管理対象ではない場合は、
+そのため、エンドポイントも以下の構造とする。
 
-`ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH`
+```http
+POST /api/v1/month-end-asset-snapshots/{snapshotId}/asset-balances
+```
 
-として扱う。
+月末資産残高の対象年月はリクエストから直接受け取らず、`snapshotId`で特定した月末資産状況の`target_year_month`を使用する。
 
-現在の資産口座の状態だけで
-過去月の登録可否を
-判断してはならない。
+これにより、
+
+```text
+snapshotId
+    ↓
+月末資産状況
+    ↓
+target_year_month
+```
+
+という関係を一意にし、リクエストで指定した年月と月末資産状況の年月が矛盾する状態を防止する。
 
 ---
 
-### 28.9 残高記録単位確認
+### 27.2 利用者IDを月末資産残高へ重複保持しない
 
-資産口座の
-`balance_recording_unit`が
-口座単位であることを確認する。
+`month_end_asset_balances`には、`user_id`を保持しない。
 
-```php
-if (
-    $assetAccount->balance_recording_unit
-    !== BalanceRecordingUnit::ACCOUNT
-) {
-    throw new
-        AssetAccountBalanceRecordingUnitMismatchException();
-}
+利用者境界は、
+
+```text
+month_end_asset_balances
+    ↓
+month_end_asset_snapshots
+    ↓
+user_id
 ```
 
-条件を満たさない場合は、
+および、
 
-`ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH`
+```text
+month_end_asset_balances
+    ↓
+asset_accounts
+    ↓
+user_id
+```
 
-として扱う。
+の関連によって保証する。
 
-商品単位の資産口座について、
-本APIで月末資産残高を
-登録してはならない。
+登録時には、月末資産状況と資産口座の両方について、操作対象利用者に属していることを確認する。
+
+これにより、`month_end_asset_balances.user_id`を追加した場合に発生し得る、
+
+```text
+snapshot.user_id
+asset_account.user_id
+balance.user_id
+```
+
+の不整合を避ける。
 
 ---
 
-### 28.10 重複確認
+### 27.3 対象年月時点の状態を基準とする
 
-同一の月末資産状況・資産口座について、
-月末資産残高が
-すでに存在しないことを確認する。
+資産口座がBAL-002の登録対象であるかどうかは、現在の資産口座状態ではなく、月末資産状況の`target_year_month`時点の状態を基準として判定する。
 
-```php
-$exists = MonthEndAssetBalance::query()
-    ->where(
-        'month_end_asset_snapshot_id',
-        $snapshot->id,
-    )
-    ->where(
-        'asset_account_id',
-        $assetAccount->id,
-    )
-    ->exists();
+判定には、`asset_account_available_settings`を使用する。
+
+```text
+snapshot.target_year_month
+        +
+assetAccountId
+        ↓
+対象年月時点で月末資産管理対象か判定
 ```
 
-存在する場合は、
+例えば、現在は利用対象外となっている資産口座であっても、対象年月時点では利用対象であった場合、その過去月については登録可能となり得る。
 
-`MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`
+反対に、現在は利用対象であっても、対象年月時点では利用対象ではなかった場合、その対象月については登録できない。
 
-として扱う。
-
-アプリケーション側の
-重複確認だけでは
-同時実行時の重複を完全には防止できないため、
-データベースのUNIQUE制約も使用する。
+過去データの整合性を維持するため、現在状態だけを参照して登録可否を判断しない。
 
 ---
 
-### 28.11 Repository
+### 27.4 口座単位と商品単位の残高管理を混在させない
 
-月末資産残高の
-新規登録を担当する。
+資産口座の`balance_recording_unit`によって、月末資産の記録方法を分離する。
 
-登録対象は、
-以下とする。
+```text
+口座単位
+    ↓
+BAL-002 月末資産残高登録
 
-- `month_end_asset_snapshot_id`
-- `asset_account_id`
-- `balance`
-
-登録例：
-
-```php
-return MonthEndAssetBalance::create([
-    'month_end_asset_snapshot_id'
-        => $snapshot->id,
-    'asset_account_id'
-        => $assetAccount->id,
-    'balance'
-        => $input->balance,
-]);
+商品単位
+    ↓
+VAL-002 商品別月末評価額登録
 ```
 
-`id`、
-`created_at`および
-`updated_at`は、
-Laravelおよび
-データベース側で設定する。
+商品単位の資産口座についてBAL-002による口座残高登録を許可すると、
 
-Repositoryでは、
-以下の処理は行わない。
+```text
+口座残高
+    +
+商品別評価額合計
+```
 
-- 月末資産状況の確定
-- 月末資産状況の確定解除
-- 商品別月末評価額の登録
-- 目的達成判定の実行
+という二重管理が発生する可能性がある。
+
+そのため、BAL-002では`balance_recording_unit`が口座単位であることを業務ルールとして検証し、商品単位の場合は登録を拒否する。
 
 ---
 
-### 28.12 トランザクション
+### 27.5 重複登録と更新を明確に分離する
 
-業務条件の最終確認から
-月末資産残高登録までを、
-1つのデータベーストランザクション内で実行する。
+同一の月末資産状況・資産口座について、月末資産残高は1件のみ保持する。
 
-実装例：
-
-```php
-$balance = DB::transaction(
-    function () use (
-        $userId,
-        $snapshotId,
-        $input,
-    ): MonthEndAssetBalance {
-        $snapshot =
-            $this->snapshotQuery
-                ->findByUserAndId(
-                    $userId,
-                    $snapshotId,
-                );
-
-        if ($snapshot === null) {
-            throw new
-                MonthEndAssetSnapshotNotFoundException();
-        }
-
-        if ($snapshot->confirmed) {
-            throw new
-                MonthEndAssetSnapshotConfirmedException();
-        }
-
-        $assetAccount =
-            $this->assetAccountQuery
-                ->findByUserAndId(
-                    $userId,
-                    $input->assetAccountId,
-                );
-
-        if ($assetAccount === null) {
-            throw new
-                AssetAccountNotFoundException();
-        }
-
-        $this->availabilityValidator->validate(
-            $assetAccount,
-            $snapshot->target_year_month,
-        );
-
-        $this->recordingUnitValidator->validate(
-            $assetAccount,
-        );
-
-        if (
-            $this->balanceQuery
-                ->existsBySnapshotAndAssetAccount(
-                    $snapshot->id,
-                    $assetAccount->id,
-                )
-        ) {
-            throw new
-                MonthEndAssetBalanceAlreadyExistsException();
-        }
-
-        return $this->repository->create(
-            $snapshot,
-            $assetAccount,
-            $input->balance,
-        );
-    },
-);
-```
-
-処理途中で例外が発生した場合は、
-月末資産残高を登録しない。
-
----
-
-### 28.13 UNIQUE制約
-
-以下の組み合わせに、
-UNIQUE制約を設定する。
+一意性の単位は以下とする。
 
 ```text
 month_end_asset_snapshot_id
@@ -2505,28 +1864,168 @@ month_end_asset_snapshot_id
 asset_account_id
 ```
 
-複数リクエストが
-同時に重複確認を通過しても、
-データベース側で
-複数レコードの作成を防止する。
+すでに月末資産残高が存在する場合、BAL-002では既存レコードを上書きしない。
 
-UNIQUE制約違反が発生した場合は、
-PostgreSQLの例外をそのまま返却せず、
+```text
+未登録
+    ↓
+BAL-002
+    ↓
+新規登録
 
-`MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`
+登録済み
+    ↓
+BAL-002
+    ↓
+409 Conflict
 
-へ変換する。
+登録済み
+    ↓
+BAL-003
+    ↓
+更新
+```
 
-アプリケーション側の事前確認と
-データベース制約の
-両方を使用する。
+これにより、
+
+* BAL-002は新規登録
+* BAL-003は既存残高の更新
+
+という責務を明確に分離する。
 
 ---
 
-### 28.14 Mass Assignment
+### 27.6 アプリケーション側確認とUNIQUE制約を併用する
 
-クライアントから受け取った値を
-そのままModelへ渡してはならない。
+重複登録については、UseCaseで事前確認を行う。
+
+ただし、事前確認だけでは、複数リクエストが同時に実行された場合に以下の競合が発生し得る。
+
+```text
+Request A
+    ↓
+重複なし
+
+Request B
+    ↓
+重複なし
+
+Request A → INSERT
+Request B → INSERT
+```
+
+そのため、データベース側でも、
+
+```text
+month_end_asset_snapshot_id
++
+asset_account_id
+```
+
+にUNIQUE制約を設定する。
+
+```text
+アプリケーション側
+    ↓
+利用者に分かりやすい事前判定
+
+データベース側
+    ↓
+同時実行時を含む最終的な一意性保証
+```
+
+という二段構えとする。
+
+#### UNIQUE制約違反が発生した場合は、PostgreSQLの例外をそのまま公開せず、`MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`へ変換する。
+
+### 27.7 `balance = 0`と未登録を区別する
+
+`balance = 0`は、有効な月末資産残高として扱う。
+
+```text
+レコードなし
+    ↓
+未登録
+
+レコードあり
+balance = 0
+    ↓
+0円で登録済み
+```
+
+そのため、LaravelおよびReact・TypeScriptの双方で、`balance`に対して単純なtruthy / falsy判定を使用しない。
+
+```php
+if (! $input->balance) {
+    // balance = 0も未入力として扱われるため使用しない
+}
+```
+
+登録有無は金額ではなく、月末資産残高レコードの存在によって判定する。
+
+この区別は、残高0円の口座を正しく月末資産状況へ反映するために必要となる。
+
+---
+
+### 27.8 確定済み月末資産状況を暗黙的に変更しない
+
+BAL-002で月末資産残高を登録できるのは、月末資産状況が未確定の場合のみとする。
+
+```text
+confirmed = false
+    ↓
+登録可能
+
+confirmed = true
+    ↓
+登録不可
+```
+
+確定済みの月末資産状況に対して登録要求が行われても、本API内で自動的に確定解除しない。
+
+確定済みデータを変更する場合は、
+
+```text
+SNP-005 月末資産状況確定解除
+    ↓
+BAL-002 月末資産残高登録
+```
+
+のように、利用者が明示的に状態を変更してから登録する。
+
+これにより、「確定済み」という業務状態が別APIの副作用によって暗黙的に変更されることを防止する。
+
+---
+
+### 27.9 月末資産残高登録だけでは関連処理を実行しない
+
+BAL-002の責務は、資産口座単位の月末資産残高を新規登録することに限定する。
+
+登録成功を契機として、以下の処理を自動実行しない。
+
+* 月末資産状況の確定
+* 月末資産状況の確定解除
+* 商品別月末評価額の登録・更新
+* 目的達成判定の実行
+* 過去の目的達成判定履歴の変更
+
+```text
+BAL-002
+    ↓
+月末資産残高を登録
+    ↓
+終了
+```
+
+各処理を独立したAPI・ユースケースとして扱うことで、APIごとの責務を限定し、副作用を予測しやすくする。
+
+Repositoryについても、月末資産残高の新規登録だけを担当し、月末資産状況や目的達成判定には関与しない。
+
+---
+
+### 27.10 クライアント指定値をそのまま永続化しない
+
+月末資産残高登録では、クライアントから受け取ったリクエスト全体をそのままEloquent Modelへ渡さない。
 
 以下のような実装は避ける。
 
@@ -2536,228 +2035,171 @@ MonthEndAssetBalance::create(
 );
 ```
 
-登録値は、
-以下から明示的に組み立てる。
+登録値は、検証済みの情報から明示的に組み立てる。
 
 ```text
 snapshotId
-    → 検証済み月末資産状況
+    ↓
+検証済み月末資産状況
+    ↓
+month_end_asset_snapshot_id
 
 assetAccountId
-    → 検証済み資産口座
-
-balance
-    → Form Request / DTOの検証済み値
-```
-
-これにより、
-クライアントから
-意図しない外部キーや
-サーバー管理項目を指定されることを防止する。
-
----
-
-### 28.15 0円の扱い
-
-`balance = 0`は、
-有効な値として扱う。
-
-以下のような
-truthy / falsy判定は使用しない。
-
-```php
-if (! $input->balance) {
-    // 0円も未入力扱いになるため使用しない
-}
-```
-
-Form Requestでは、
-`required`と
-整数・最小値の検証を組み合わせ、
-0円を正常値として許容する。
-
----
-
-### 28.16 Responder
-
-UseCaseから受け取った
-登録後の月末資産残高を、
-API共通方針に従った
-HTTPレスポンスへ変換する。
-
-正常終了時は、
-`201 Created`とともに
-`data`オブジェクトとして返却する。
-
-Responderは、
-以下の処理を行わない。
-
-- データベース検索
-- 利用者境界の判定
-- 確定状態の判定
-- 対象年月時点の利用可否判定
-- 残高記録単位の判定
-- 重複登録判定
-- 月末資産残高の登録
-
----
-
-### 28.17 API Resource
-
-データベースカラムを直接返却せず、
-API Resourceを利用して
-APIレスポンス形式へ変換する。
-
-変換例：
-
-```php
-return [
-    'assetAccountId'
-        => (string) $this->asset_account_id,
-    'balance'
-        => (int) $this->balance,
-];
-```
-
-正常終了時は、
-`balance`が必ずintegerとなる。
-
-`balance = 0`の場合も
-そのまま`0`を返却する。
-
-以下の項目は、
-レスポンスへ含めない。
-
-- 月末資産残高ID
-- `snapshotId`
-- `userId`
-- `targetYearMonth`
-- `confirmed`
-- 資産口座名
-- `createdAt`
-- `updatedAt`
-
----
-
-### 28.18 Middleware
-
-以下の共通ミドルウェアを適用する。
-
-- 利用者コンテキスト設定
-- リクエストID生成
-- JSONリクエスト・レスポンス共通処理
-- 共通例外処理
-- ログコンテキスト設定
-
-利用者コンテキスト設定ミドルウェアでは、
-`X-User-Id`を検証し、
-操作対象利用者を特定する。
-
-Action以降では、
-検証済みの利用者コンテキストを使用する。
-
----
-
-### 28.19 Eloquentモデル
-
-`MonthEndAssetBalance`モデルは、
-`month_end_asset_balances`
-テーブルへ対応する。
-
-主に以下の属性を使用する。
-
-```text
-id
-month_end_asset_snapshot_id
+    ↓
+検証済み資産口座
+    ↓
 asset_account_id
+
+balance
+    ↓
+Form Request / DTO
+    ↓
 balance
 ```
 
-`balance`は、
-日本円の整数値として扱う。
+これにより、クライアントから`user_id`、外部キー、サーバー管理項目などを意図せず上書きされることを防止する。
 
-必要に応じて、
-integer castを設定する。
+---
 
-```php
-protected function casts(): array
+### 27.11 業務ルールと入力バリデーションを分離する
+
+`assetAccountId`や`balance`の形式確認はForm Request / DTOで行う。
+
+一方、以下のようなデータベース状態や対象年月に依存する判定は、UseCaseおよび業務ルール判定クラスで行う。
+
+```text
+Form Request / DTO
+    ↓
+入力形式の検証
+
+UseCase / Validator
+    ↓
+業務状態の検証
+```
+
+業務ルールとして扱う主な内容は以下とする。
+
+* 月末資産状況が操作対象利用者に属している
+* 月末資産状況が未確定である
+* 資産口座が操作対象利用者に属している
+* 対象年月時点で月末資産管理対象である
+* 残高記録単位が口座単位である
+* 同一の月末資産状況・資産口座について未登録である
+
+特に、対象年月時点の利用可否や残高記録単位の判定については、UseCaseへ条件分岐を書き込み続けず、必要に応じて専用Validatorへ分離する。
+
+---
+
+### 27.12 APIレスポンスには必要最小限の情報だけを返す
+
+BAL-002の成功レスポンスでは、登録結果として必要な以下の情報だけを返却する。
+
+```json
 {
-    return [
-        'balance' => 'integer',
-    ];
+  "data": {
+    "assetAccountId": "3",
+    "balance": 1200000
+  }
 }
 ```
 
+月末資産残高ID、月末資産状況ID、利用者ID、対象年月、確定状態、資産口座名などは返却しない。
+
+これらの情報が必要な場合は、それぞれの参照APIを利用する。
+
+API Resourceでは、Eloquent ModelやデータベースカラムをそのままJSONへ公開せず、API仕様に定義した項目へ明示的に変換する。
+
 ---
 
-### 28.20 業務ルール判定クラス
+### 27.13 内部例外とAPIエラーを分離する
 
-対象年月時点の利用可否判定や
-残高記録単位の判定を、
-UseCaseへ直接書き込み続けない。
-
-例えば、
-以下の責務へ分離してよい。
+Laravel、Eloquent、PostgreSQLなどから発生した内部例外は、そのままAPIレスポンスへ公開しない。
 
 ```text
-AssetAccountAvailabilityValidator
-    → 対象年月時点の利用可否判定
-
-AssetAccountBalanceRecordingUnitValidator
-    → 口座単位であることの判定
+Laravel / PostgreSQL例外
+    ↓
+共通例外変換
+    ↓
+独自エラーコード
+    ↓
+APIレスポンス
 ```
 
-各Validatorは、
-HTTPレスポンス生成や
-データベース登録を行わない。
+例えば、月末資産残高のUNIQUE制約違反は、
 
----
+```text
+PostgreSQL UNIQUE制約違反
+    ↓
+MONTH_END_ASSET_BALANCE_ALREADY_EXISTS
+    ↓
+409 Conflict
+```
 
-### 28.21 例外変換
-
-LaravelおよびPostgreSQLの内部例外は、
-そのままAPIレスポンスへ公開しない。
-
-主な例外変換は、
-以下とする。
-
-| 内部状態 | 独自エラーコード |
-|---|---|
-| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_USER_ID` |
-| 利用者不存在 | `USER_NOT_FOUND` |
-| 入力値不正 | `VALIDATION_ERROR` |
-| 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
-| 利用者境界外の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
-| 月末資産状況確定済み | `MONTH_END_ASSET_SNAPSHOT_CONFIRMED` |
-| 資産口座不存在 | `ASSET_ACCOUNT_NOT_FOUND` |
-| 利用者境界外の資産口座 | `ASSET_ACCOUNT_NOT_FOUND` |
-| 対象年月時点で利用不可 | `ASSET_ACCOUNT_NOT_AVAILABLE_FOR_TARGET_MONTH` |
-| 残高記録単位不一致 | `ASSET_ACCOUNT_BALANCE_RECORDING_UNIT_MISMATCH` |
-| 月末資産残高重複 | `MONTH_END_ASSET_BALANCE_ALREADY_EXISTS` |
-| 想定外例外 | `INTERNAL_SERVER_ERROR` |
-
-UNIQUE制約違反については、
-対象となる制約を判別し、
-`MONTH_END_ASSET_BALANCE_ALREADY_EXISTS`
 へ変換する。
 
-SQL、
-スタックトレース、
-PostgreSQLの制約名および
-内部例外メッセージは、
-APIレスポンスへ含めない。
+APIレスポンスには、以下を含めない。
 
-ログには、
-調査に必要な範囲で
-以下を記録する。
+* SQL
+* スタックトレース
+* PostgreSQLの制約名
+* 内部例外メッセージ
 
-- 操作対象利用者ID
-- 月末資産状況ID
-- 資産口座ID
-- 対象年月
-- 独自エラーコード
-- リクエストID
+一方、ログには調査に必要な範囲で、利用者ID、月末資産状況ID、資産口座ID、対象年月、独自エラーコード、リクエストIDなどを記録する。
 
-月末資産残高の具体的な金額は、
-不要にエラーログへ出力しない。
+月末資産残高そのものの金額については、不要にエラーログへ出力しない。
+
+---
+
+### 27.14 設計上の責務境界
+
+BAL-002では、各レイヤーの責務を以下のように分離する。
+
+```text
+Middleware
+    ↓
+利用者コンテキスト・共通処理
+
+Action
+    ↓
+HTTPリクエスト受付
+
+Form Request / DTO
+    ↓
+入力形式検証
+
+UseCase
+    ↓
+月末資産残高登録ユースケース
+
+Query
+    ↓
+月末資産状況・資産口座・重複状態取得
+
+業務ルールValidator
+    ↓
+対象年月時点利用可否
+残高記録単位判定
+
+Repository
+    ↓
+月末資産残高登録
+
+API Resource / Responder
+    ↓
+APIレスポンス生成
+```
+
+月末資産残高登録に関する処理をActionやEloquent Modelへ集中させず、入力検証、データ取得、業務ルール判定、永続化、レスポンス生成を分離する。
+
+これにより、月末資産管理に関するルールが増えた場合でも、各責務を独立して変更・テストしやすい構成とする。
+
+## 28. 関連ドキュメント
+
+- [API共通方針](../../api-common-policy.md)
+- [API一覧](../../api-list.md)
+- [エラーコード一覧](../../error-codes.md)
+- [機能要件](../../../requirements/functional-requirements.md)
+- [ユビキタス言語集](../../../requirements/glossary.md)
+- [エンティティ定義](../../../requirements/entities.md)
+- [テーブル定義書](../../../database/table-definition.md)
+- [ER図](../../../database/er-diagram-phase1.md)
