@@ -6661,4443 +6661,834 @@ httpStatus
 
 ---
 
-### 29 テスト観点
+### 29 設計上の補足
 
-CSV-006では、
-CSV入力、
-利用者境界、
-業務ルール、
-一括登録、
-トランザクション、
-同時実行を
-重点的に確認する。
+#### 29.1 POSTを採用する理由
 
-CSV-005と
-共通化している検証ロジックについては、
-同一入力・同一DB状態で
-判定が一致することも確認する。
+CSV-006は、
+CSVファイルの内容に基づき、
+複数の商品別月末評価額を
+新規登録する。
 
----
+そのため、
+HTTPメソッドには
+`POST`を採用する。
 
-#### 29.1 正常系
-
-正常なCSVを送信する。
-
-例：
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,1500000
-2026-07,証券口座,S&P500,800000
-```
-
-以下を確認する。
-
-- `201 Created`となること
-- `targetYearMonth = 2026-07`となること
-- `importedCount = 2`となること
-- 2件の`month_end_holding_values`が登録されること
-- 登録された`value`がCSVと一致すること
-- 各行が正しい`holding_asset_id`へ紐づくこと
-- 各行が同一の`month_end_asset_snapshot_id`へ紐づくこと
-- CSV登録によってsnapshotが確定されないこと
-
----
-
-#### 29.2 CSV-004との整合性
-
-CSV-004で取得した
-正式テンプレートへ
-正常なデータを入力し、
-CSV-006へ送信する。
-
-以下を確認する。
+本APIは、
+単純な参照処理ではなく、
 
 ```text
-CSV-004
-生成ヘッダー
-    =
-CSV-006
-受付ヘッダー
+CSV受信
+    ↓
+CSV解析
+    ↓
+入力・業務検証
+    ↓
+商品別月末評価額登録
 ```
 
-正式テンプレートが
-ヘッダー不正にならないこと。
+という副作用を持つ処理である。
 
 ---
 
-#### 29.3 CSV-005との整合性
+#### 29.2 CSV-005とCSV-006を分離する理由
 
-同一利用者、
-同一DB状態、
-同一CSVについて、
+CSVプレビューと
+CSV登録では、
+副作用の有無が異なる。
+
+```text
+CSV-005
+    ↓
+解析・検証
+    ↓
+プレビュー生成
+    ↓
+DB更新なし
+```
+
+```text
+CSV-006
+    ↓
+解析・再検証
+    ↓
+商品別月末評価額登録
+    ↓
+DB更新あり
+```
+
+同一APIに
+
+```text
+preview = true
+```
+
+などを指定して
+処理を切り替える方式は採用しない。
+
+プレビューと登録を
+別APIとして明確に分離することで、
+
+* 副作用の有無
+* レスポンス形式
+* トランザクション
+* 排他制御
+* エラー処理
+
+の責務を明確にする。
+
+---
+
+#### 29.3 CSV-006で再検証する理由
+
+CSV-005とCSV-006の間で、
+業務データの状態が
+変更される可能性がある。
+
+例えば、
+
+```text
+CSV-005
+
+snapshot
+confirmed = false
+
+既存評価額なし
+    ↓
+canImport = true
+```
+
+となった後に、
+別処理によって、
+
+```text
+snapshot確定
+
+または
+
+商品別月末評価額登録
+```
+
+が行われる可能性がある。
+
+そのため、
 
 ```text
 CSV-005
 canImport = true
 ```
 
-となる場合に、
-CSV-006でも
-登録可能となることを確認する。
+であっても、
+CSV-006では
 
-CSV-005とCSV-006で
-CSV解析・業務ルールの
-実装差異がないことを確認する。
+* CSV内容
+* 資産口座
+* 残高記録単位
+* 保有商品
+* 資産口座と保有商品の関連
+* 対象年月時点での保有商品の有効性
+* 月末資産状況
+* 既存商品別月末評価額
+
+を最新状態で再検証する。
+
+CSV-005の結果を
+登録可否の最終保証として
+使用しない。
 
 ---
 
-#### 29.4 file未指定
+#### 29.4 プレビュー結果を送信しない理由
 
-`file`を指定せずに
-CSV-006を実行する。
-
-期待結果：
+CSV-006では、
+CSV-005で返却された
 
 ```text
-422 Unprocessable Entity
-VALIDATION_ERROR
+canImport
+errors
+rows
+targetYearMonth
+previewId
 ```
 
-以下も確認する。
+などを
+登録リクエストとして受け取らない。
 
-- CSV解析を行わないこと
-- snapshotを作成しないこと
-- 商品別月末評価額を登録しないこと
+クライアント側で保持された
+プレビュー結果は、
+サーバーが保証できる情報ではないためである。
 
----
+また、
+プレビュー後に
+データベース状態が
+変更される可能性もある。
 
-#### 29.5 CSV以外のファイル
-
-例えば、
+CSV-006では、
 
 ```text
-test.xlsx
+CSVファイル
++
+X-User-Id
++
+CSV-006実行時点の最新DB状態
 ```
 
-を送信する。
+を基準として
+登録可否を判定する。
 
-期待結果：
+---
+
+#### 29.5 CSVファイルを再送する理由
+
+Phase1では、
+CSV-005のプレビュー結果や
+アップロードされたCSVファイルを
+登録用データとして
+サーバー側へ保持しない。
+
+そのため、
+CSV-006では
+CSV-005で使用した
+同一CSVファイルを再送する。
+
+これにより、
+
+* 一時CSVファイル保存
+* `previewId`
+* preview token
+* preview session
+* 一時データの有効期限
+* 一時データの削除処理
+* プレビューと利用者の関連管理
+
+などを不要とする。
+
+Phase1では、
+プレビューセッション管理を導入せず、
+APIをステートレスに近い形で扱う。
+
+---
+
+#### 29.6 資産口座名と保有商品名を使用する理由
+
+CSVでは、
 
 ```text
-422 Unprocessable Entity
-VALIDATION_ERROR
+asset_account_id
+holding_asset_id
 ```
 
-業務データが
-更新されないこと。
+のような
+内部IDを入力させない。
 
----
-
-#### 29.6 ファイルサイズ超過
-
-CSV共通仕様で定める
-上限を超えるファイルを送信する。
-
-期待結果：
+利用者がCSV上で扱う値は、
 
 ```text
-422 Unprocessable Entity
-VALIDATION_ERROR
-```
-
-登録処理へ
-進まないこと。
-
----
-
-#### 29.7 空ファイル
-
-0バイトのCSVを送信する。
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-INVALID_CSV_FORMAT
-```
-
-以下が
-新規作成されないこと。
-
-- `month_end_asset_snapshots`
-- `month_end_holding_values`
-
----
-
-#### 29.8 ヘッダー不正
-
-以下を送信する。
-
-```csv
-targetYearMonth,assetAccountName,holdingAssetName,value
-2026-07,証券口座,全世界株式,1500000
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-INVALID_CSV_FORMAT
-```
-
-登録処理へ
-進まないこと。
-
----
-
-#### 29.9 ヘッダー順序不正
-
-以下を送信する。
-
-```csv
-asset_account_name,target_year_month,holding_asset_name,value
-証券口座,2026-07,全世界株式,1500000
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-INVALID_CSV_FORMAT
-```
-
-となること。
-
----
-
-#### 29.10 余分なヘッダー
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value,memo
-2026-07,証券口座,全世界株式,1500000,test
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-INVALID_CSV_FORMAT
-```
-
-となること。
-
----
-
-#### 29.11 データ行0件
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-CSV_DATA_REQUIRED
-```
-
-以下を確認する。
-
-- `importedCount = 0`の正常レスポンスとしないこと
-- snapshotを作成しないこと
-- 商品別月末評価額を登録しないこと
-
----
-
-#### 29.12 target_year_month未入力
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-,証券口座,全世界株式,1500000
-```
-
-以下を確認する。
-
-- `422 Unprocessable Entity`となること
-- CSV全体が登録されないこと
-
----
-
-#### 29.13 target_year_month形式不正
-
-以下の値を
-それぞれテストする。
-
-```text
-2026-1
-2026/07
-202607
-2026-00
-2026-13
-abc
-```
-
-以下を確認する。
-
-- `422 Unprocessable Entity`となること
-- 商品別月末評価額が登録されないこと
-
----
-
-#### 29.14 対象年月混在
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-06,証券口座,全世界株式,1400000
-2026-07,証券口座,S&P500,800000
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-MULTIPLE_TARGET_YEAR_MONTHS
-```
-
-CSV全体が
-登録されないこと。
-
----
-
-#### 29.15 asset_account_name未入力
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,,全世界株式,1500000
-```
-
-以下を確認する。
-
-- `422 Unprocessable Entity`となること
-- CSV全体が登録されないこと
-
----
-
-#### 29.16 資産口座不存在
-
-操作対象利用者に
-存在しない資産口座を指定する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,存在しない口座,全世界株式,1500000
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-ASSET_ACCOUNT_NOT_FOUND
-```
-
-商品別月末評価額が
-登録されないこと。
-
----
-
-#### 29.17 他利用者にのみ同名資産口座が存在する
-
-以下の状態を用意する。
-
-```text
-User A
-証券口座なし
-
-User B
-証券口座あり
-```
-
-User Aとして、
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,1500000
-```
-
-を送信する。
-
-期待結果：
-
-```text
-ASSET_ACCOUNT_NOT_FOUND
-```
-
-となること。
-
-User Bの資産口座を
-使用しないこと。
-
----
-
-#### 29.18 論理削除済み資産口座
-
-`asset_accounts.deleted_at`が
-設定された資産口座を指定する。
-
-以下を確認する。
-
-- 有効な資産口座として扱われないこと
-- CSV全体が登録されないこと
-
----
-
-#### 29.19 残高記録単位が商品単位
-
-対象資産口座の
-
-```text
-balance_recording_unit
-    = 商品単位
+asset_account_name
+holding_asset_name
 ```
 
 とする。
 
-他の条件が正常な場合は、
-商品別月末評価額を
-正常に登録できること。
+内部IDは
+CSV-006実行時に
+バックエンド側で特定する。
 
----
-
-#### 29.20 残高記録単位が口座単位
-
-口座単位で管理する
-資産口座を指定する。
-
-期待結果：
+概念的には、
 
 ```text
-422 Unprocessable Entity
-BALANCE_RECORDING_UNIT_MISMATCH
+X-User-Id
++
+asset_account_name
+    ↓
+asset_account特定
+    ↓
+asset_account.id
++
+holding_asset_name
+    ↓
+holding_asset特定
 ```
 
-以下を確認する。
+とする。
 
-- `month_end_holding_values`へ登録されないこと
-- `month_end_asset_balances`へも登録されないこと
+これにより、
+データベース内部IDを
+CSV仕様へ露出させない。
 
 ---
 
-#### 29.21 holding_asset_name未入力
+#### 29.7 保有商品名だけで特定しない理由
 
-以下を送信する。
+異なる資産口座に、
+同名の保有商品が
+存在する可能性がある。
 
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,,1500000
-```
-
-以下を確認する。
-
-- `422 Unprocessable Entity`となること
-- CSV全体が登録されないこと
-
----
-
-#### 29.22 保有商品不存在
-
-指定資産口座に存在しない
-保有商品を指定する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,存在しない商品,1500000
-```
-
-期待結果：
-
-```text
-422 Unprocessable Entity
-HOLDING_ASSET_NOT_FOUND
-```
-
-となること。
-
----
-
-#### 29.23 他資産口座にのみ同名保有商品が存在する
-
-以下の状態を用意する。
+例えば、
 
 ```text
 証券口座A
-    全世界株式なし
+    全世界株式
 
 証券口座B
-    全世界株式あり
+    全世界株式
 ```
 
-以下を送信する。
+という状態があり得る。
 
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座A,全世界株式,1500000
-```
-
-期待結果：
+そのため、
+CSV-006では
 
 ```text
-HOLDING_ASSET_NOT_FOUND
+holding_asset_name
 ```
 
-となること。
+だけを使用して
+保有商品を特定しない。
 
-証券口座Bの商品へ
-登録されないこと。
-
----
-
-#### 29.24 他利用者にのみ同名保有商品が存在する
-
-以下の状態を用意する。
+登録対象は、
 
 ```text
-User A
-証券口座
-    全世界株式なし
-
-User B
-証券口座
-    全世界株式あり
+操作対象利用者
++
+asset_account_name
++
+holding_asset_name
 ```
 
-User Aとして
-CSV-006を実行する。
+によって特定する。
 
-期待結果：
+これにより、
+別資産口座に属する
+同名保有商品へ
+誤って評価額を登録することを防止する。
+
+---
+
+#### 29.8 商品単位の資産口座だけを対象とする理由
+
+Life Plannerでは、
+資産口座ごとに
+残高の記録単位が異なる。
+
+概念的には、
 
 ```text
-HOLDING_ASSET_NOT_FOUND
+口座単位
+    ↓
+month_end_asset_balances
 ```
-
-となること。
-
-User Bの保有商品へ
-登録されないこと。
-
----
-
-#### 29.25 論理削除済み保有商品
-
-`holding_assets.deleted_at`が
-設定された保有商品を指定する。
-
-以下を確認する。
-
-- 有効な保有商品として扱われないこと
-- 商品別月末評価額が登録されないこと
-
----
-
-#### 29.26 対象年月時点で有効
-
-対象年月時点で
-商品別月末評価額の
-記録対象として有効な
-保有商品を指定する。
-
-他の条件が正常であれば、
-登録できること。
-
----
-
-#### 29.27 対象年月時点で無効
-
-対象年月時点で
-記録対象として無効な
-保有商品を指定する。
-
-期待結果：
 
 ```text
-422 Unprocessable Entity
-HOLDING_ASSET_NOT_AVAILABLE
+商品単位
+    ↓
+month_end_holding_values
 ```
 
-となること。
+とする。
 
-現在時点で有効であっても、
-対象年月時点で無効なら
-登録できないこと。
+CSV-006は、
+`month_end_holding_values`を
+登録するAPIである。
 
----
-
-#### 29.28 value未入力
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,
-```
-
-以下を確認する。
-
-- `422 Unprocessable Entity`となること
-- CSV全体が登録されないこと
-
----
-
-#### 29.29 valueが文字列
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,abc
-```
-
-期待結果：
+そのため、
+対象資産口座の
 
 ```text
-422 Unprocessable Entity
-INVALID_VALUE
+balance_recording_unit
 ```
 
-となること。
+が商品単位であることを
+必須とする。
+
+口座単位の資産口座へ
+商品別月末評価額を
+登録してはならない。
 
 ---
 
-#### 29.30 valueが小数
+#### 29.9 対象年月時点の保有商品状態を使用する理由
 
-以下を送信する。
+商品別月末評価額は、
+現在時点の保有状態ではなく、
+対象年月時点の
+資産状態を記録するデータである。
 
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,1000.5
-```
-
-期待結果：
+そのため、
+保有商品の有効性についても、
 
 ```text
-422 Unprocessable Entity
-INVALID_VALUE
+現在有効か
 ```
 
-となること。
-
----
-
-#### 29.31 valueが負数
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,-1
-```
-
-期待結果：
+ではなく、
 
 ```text
-422 Unprocessable Entity
-INVALID_VALUE
+target_year_month時点で
+評価額記録対象として有効か
 ```
 
-となること。
+を基準として判定する。
+
+例えば、
+現在は利用されている保有商品でも、
+対象年月時点では
+まだ存在していない場合は、
+その対象年月の評価額として
+登録可能とは判定しない。
 
 ---
 
-#### 29.32 valueが0円
+#### 29.10 全件成功・全件失敗とする理由
 
-以下を送信する。
+CSVは、
+複数の商品別月末評価額を
+まとめて登録するための入力手段である。
 
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,0
-```
-
-他の条件が正常であれば、
-登録できること。
-
-登録後に、
+一部の行だけを登録すると、
+利用者から見て
 
 ```text
-value = 0
+どの商品まで登録されたのか
 ```
 
-として保持されること。
+が分かりにくくなる。
 
-0円を
-未入力扱いしないこと。
-
----
-
-#### 29.33 桁区切り付きvalue
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,"1,500,000"
-```
-
-期待結果：
+例えば、
 
 ```text
-422 Unprocessable Entity
-INVALID_VALUE
+2行目
+正常
+
+3行目
+正常
+
+4行目
+エラー
 ```
 
-となること。
-
----
-
-#### 29.34 通貨記号付きvalue
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,¥1500000
-```
-
-期待結果：
+の場合に、
 
 ```text
-422 Unprocessable Entity
-INVALID_VALUE
+2行目 登録済み
+3行目 登録済み
+4行目 未登録
 ```
 
-となること。
+とはしない。
 
----
-
-#### 29.35 CSV内重複
-
-以下を送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,証券口座,全世界株式,1500000
-2026-07,証券口座,全世界株式,1600000
-```
-
-期待結果：
+CSV-006では、
 
 ```text
-422 Unprocessable Entity
-DUPLICATE_HOLDING_ASSET_IN_CSV
+全件成功
+または
+全件失敗
 ```
 
-以下を確認する。
-
-- どちらの行も登録されないこと
-- 先勝ち・後勝ちにならないこと
+とする。
 
 ---
 
-#### 29.36 月末資産状況が存在しない
+#### 29.11 登録前に全件検証する理由
 
+CSVを読み込みながら、
+1行ずつ
+
+```text
+検証
+    ↓
+INSERT
+```
+
+する方式は採用しない。
+
+途中の行で
+エラーが発生した場合に、
+前半だけ登録される可能性があるためである。
+
+基本的には、
+
+```text
+CSV全体解析
+    ↓
+入力値検証
+    ↓
+業務ルール検証
+    ↓
+全件登録可能
+    ↓
+トランザクション開始
+    ↓
+一括登録
+```
+
+とする。
+
+---
+
+#### 29.12 トランザクションを使用する理由
+
+CSV-006では、
+
+* 必要に応じた月末資産状況の作成
+* 複数の商品別月末評価額登録
+
+を行う。
+
+途中でエラーが発生した場合に、
+一部の評価額だけを
+データベースへ残してはならない。
+
+そのため、
+
+```text
+BEGIN
+    ↓
+必要に応じてsnapshot作成
+    ↓
+month_end_holding_values登録
+    ↓
+すべて成功
+    ↓
+COMMIT
+```
+
+とする。
+
+途中で失敗した場合は、
+
+```text
+ROLLBACK
+```
+
+し、
+CSV-006実行前の状態へ戻す。
+
+---
+
+#### 29.13 snapshotを必要時に作成する理由
+
+商品別月末評価額を
+登録するためには、
 対象年月の
-`month_end_asset_snapshots`が
-存在しない状態で、
-正常なCSVを送信する。
+月末資産状況が必要となる。
 
-以下を確認する。
+利用者に、
 
-- `201 Created`となること
-- `month_end_asset_snapshots`が1件作成されること
-- `user_id`が操作対象利用者となること
-- `target_year_month`がCSV対象年月となること
-- `confirmed = false`となること
-- CSV行数分の`month_end_holding_values`が登録されること
+```text
+CSV登録前に
+対象年月のsnapshotを作成する
+```
+
+という操作を
+必須とすると、
+操作手順が増える。
+
+そのため、
+対象年月のsnapshotが
+存在しない場合は、
+CSV-006内で
+未確定状態として作成する。
+
+概念的には、
+
+```text
+user_id
+    = 操作対象利用者ID
+
+target_year_month
+    = CSVのtarget_year_month
+
+confirmed
+    = false
+```
+
+とする。
+
+ただし、
+CSV検証に失敗した状態で
+snapshotだけを作成してはならない。
 
 ---
 
-#### 29.37 月末資産状況が未確定
+#### 29.14 snapshotを自動確定しない理由
 
-対象年月について、
+CSV-006は、
+商品単位の
+商品別月末評価額だけを
+登録するAPIである。
+
+対象年月には、
+
+* 別の保有商品の評価額
+* 別の資産口座の商品別月末評価額
+* 口座単位で管理する月末資産残高
+
+などが
+まだ登録されていない可能性がある。
+
+そのため、
 
 ```text
-confirmed = false
+CSV-006成功
+    ↓
+snapshot自動確定
 ```
 
-のsnapshotを用意する。
+とはしない。
 
-正常CSVを送信し、
-既存snapshotへ
-商品別月末評価額が登録されること。
-
-新しいsnapshotが
-追加作成されないこと。
+CSV登録と
+月末資産状況の確定は、
+別の業務操作として扱う。
 
 ---
 
-#### 29.38 月末資産状況が確定済み
+#### 29.15 既存商品別月末評価額を上書きしない理由
 
-対象年月について、
-
-```text
-confirmed = true
-```
-
-のsnapshotを用意する。
-
-期待結果：
+CSV-006へ
 
 ```text
-409 Conflict
-MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
+新規登録
++
+既存データ更新
 ```
 
-以下を確認する。
+の両方の責務を持たせると、
 
-- 商品別月末評価額が登録されないこと
-- `confirmed`が変更されないこと
+```text
+既存値がある場合はどうするか
+同じ値なら成功扱いするか
+異なる値なら上書きするか
+一部だけ更新するか
+```
+
+など、
+挙動が複雑になる。
+
+Phase1では、
+CSV-006を
+
+```text
+新規一括登録API
+```
+
+に限定する。
+
+既存の
+`month_end_holding_values`が
+存在する場合は
+重複エラーとする。
+
+既存評価額の変更は、
+商品別月末評価額の
+更新責務を持つ処理へ委譲する。
 
 ---
 
-#### 29.39 他利用者の同一対象年月
+#### 29.16 同じvalueでも重複とする理由
 
-以下を用意する。
-
-```text
-User A
-2026-07 snapshotなし
-
-User B
-2026-07 snapshotあり
-```
-
-User Aとして
-正常CSVを登録する。
-
-以下を確認する。
-
-- User Bのsnapshotを使用しないこと
-- 必要であればUser A用snapshotが新規作成されること
-- User Aのデータとして登録されること
-
----
-
-#### 29.40 他利用者の同一対象年月が確定済み
-
-以下を用意する。
-
-```text
-User A
-2026-07 snapshotなし
-
-User B
-2026-07
-confirmed = true
-```
-
-User Aとして
-CSV-006を実行する。
-
-User Bの確定状態によって
-User Aの登録が
-拒否されないこと。
-
----
-
-#### 29.41 既存商品別月末評価額
-
-同一対象年月、
-同一保有商品について、
-既に商品別月末評価額を用意する。
-
-期待結果：
-
-```text
-409 Conflict
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-以下を確認する。
-
-- 既存`value`が変更されないこと
-- CSV値で上書きされないこと
-- 新規レコードが追加されないこと
-
----
-
-#### 29.42 既存値と同じvalue
-
-既存の商品別月末評価額と
-CSVの`value`が
+既存の商品別月末評価額と、
+CSVに指定された`value`が
 同じ場合でも、
-成功扱いにしない。
+登録成功とはしない。
 
-期待結果：
+例えば、
 
 ```text
-409 Conflict
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
+既存value
+    = 1500000
+
+CSV value
+    = 1500000
+```
+
+であっても、
+
+```text
+既存商品別月末評価額あり
+    ↓
+重複
 ```
 
 とする。
 
 CSV-006を
-upsert APIとして扱わないこと。
+疑似的なupsert APIとして
+扱わないためである。
 
 ---
 
-#### 29.43 既存値と異なるvalue
+#### 29.17 valueを合算しない理由
 
-既存値が
+同一CSV内に、
 
 ```text
+証券口座
+全世界株式
 1500000
 ```
 
-で、
-CSVに
+と、
 
 ```text
-1600000
-```
-
-が指定されている場合も、
-
-```text
-409 Conflict
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-となること。
-
-既存値が
-`1600000`へ
-更新されないこと。
-
----
-
-#### 29.44 一部だけ既存
-
-以下の状態を用意する。
-
-```text
+証券口座
 全世界株式
-    → 登録済み
-
-S&P500
-    → 未登録
+500000
 ```
 
-両方を含むCSVを送信する。
-
-期待結果：
+が存在していても、
 
 ```text
-409 Conflict
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
+1500000 + 500000
+    =
+2000000
 ```
 
-以下を確認する。
+として自動的に
+合算しない。
 
-- S&P500だけを登録しないこと
-- CSV全体が失敗すること
-- 新規登録件数が0件であること
+商品別月末評価額は、
+対象年月・保有商品に対する
+1つの評価額として扱う。
 
----
-
-#### 29.45 複数エラー
-
-以下のようなCSVを送信する。
-
-```csv
-target_year_month,asset_account_name,holding_asset_name,value
-2026-07,存在しない口座,全世界株式,100000
-2026-07,証券口座,存在しない商品,200000
-2026-07,証券口座,S&P500,-1
-```
-
-可能な範囲で
-複数エラーが
-返却されることを確認する。
-
-以下も確認する。
-
-- CSV全体が登録されないこと
-- snapshotが新規作成されないこと
-- 商品別月末評価額が1件も登録されないこと
-
----
-
-#### 29.46 一部登録されないこと
-
-3行中、
-2行が正常で
-1行がエラーとなるCSVを送信する。
-
-以下を確認する。
-
-```text
-正常行
-    → INSERTされない
-
-エラー行
-    → INSERTされない
-```
-
-CSV全体で
-新規登録0件となること。
-
----
-
-#### 29.47 全件検証後に登録されること
-
-CSV前半の行が正常で、
-末尾行がエラーとなるCSVを送信する。
-
-以下を確認する。
-
-- 前半の正常行が先に登録されないこと
-- エラー発見時点でDBに部分データが存在しないこと
-
----
-
-#### 29.48 トランザクション成功
-
-対象年月のsnapshotが
-存在しない状態で、
-複数行の正常CSVを送信する。
-
-以下を確認する。
-
-```text
-snapshot INSERT
-+
-month_end_holding_values
-複数件 INSERT
-    ↓
-COMMIT
-```
-
-となること。
-
-すべてのデータが
-正常に保存されること。
-
----
-
-#### 29.49 トランザクションロールバック
-
-snapshot作成後、
-商品別月末評価額登録中に
-意図的に例外を発生させる。
-
-以下を確認する。
-
-```text
-snapshot INSERT
-    ↓
-holding value INSERT
-    ↓
-例外
-    ↓
-ROLLBACK
-```
-
-結果として、
-
-- 新規snapshotが残らないこと
-- 一部の商品別月末評価額が残らないこと
-
-を確認する。
-
----
-
-#### 29.50 既存snapshot使用時のロールバック
-
-既存の未確定snapshotへ
-複数件登録する途中で
-例外を発生させる。
-
-以下を確認する。
-
-- 新規登録した商品別月末評価額がすべてロールバックされること
-- 既存snapshot自体は残ること
-- snapshotの`confirmed`が変更されないこと
-
----
-
-#### 29.51 snapshot重複作成防止
-
-同一利用者、
-同一対象年月について
-CSV-006を並行実行する。
-
-以下を確認する。
-
-- `month_end_asset_snapshots`が重複作成されないこと
-- `user_id + target_year_month`の一意性が維持されること
-- 不整合なsnapshotが残らないこと
-
----
-
-#### 29.52 CSV-003とのsnapshot作成競合
-
-対象年月のsnapshotが
-存在しない状態で、
-
-```text
-CSV-003
-月末資産残高CSV登録
-```
-
-と
-
-```text
-CSV-006
-商品別月末評価額CSV登録
-```
-
-を
-同一利用者・同一対象年月へ
-並行実行する。
-
-以下を確認する。
-
-- snapshotが1件だけ作成されること
-- 両APIが異なるsnapshotを作成しないこと
-- 最終的に同じsnapshotへ紐づくこと
-- 一意制約違反が未処理の500エラーとして露出しないこと
-
----
-
-#### 29.53 商品別月末評価額の同時登録
-
-同一snapshot、
-同一保有商品について
-複数リクエストを
-並行実行する。
-
-以下を確認する。
-
-- 同一商品の評価額が複数件登録されないこと
-- UNIQUE制約によって重複が防止されること
-- 競合したリクエストが適切な`409 Conflict`となること
-
----
-
-#### 29.54 CSV登録後も未確定
-
-CSV登録成功後、
-対象snapshotの
-
-```text
-confirmed
-```
-
-を確認する。
-
-以下となること。
-
-```text
-confirmed = false
-```
-
-CSV-006によって
-自動確定されないこと。
-
----
-
-#### 29.55 CSVに含まれない保有商品
-
-対象年月時点で
-商品別月末評価額の
-記録対象となる保有商品が
-3件存在する状態で、
-そのうち2件だけを
-CSVへ含める。
-
-CSVに含まれた2件が
-他の条件を満たしている場合は、
-登録できること。
-
-CSVに含まれていない
-残り1件を理由として
-CSV-006が失敗しないこと。
-
-必要な商品別月末評価額が
-すべて登録されているかどうかは、
-月末資産状況確定処理の
-責務とする。
-
----
-
-#### 29.56 月末資産残高への副作用
-
-CSV-006実行前後で、
-
-```text
-month_end_asset_balances
-```
-
-が変更されないことを確認する。
-
-商品単位データの登録によって
-口座単位残高を
-自動作成・更新しないこと。
-
----
-
-#### 29.57 利用者コンテキスト未指定
-
-`X-User-Id`を
-指定せずに実行する。
-
-期待結果：
-
-```text
-400 Bad Request
-USER_CONTEXT_REQUIRED
-```
-
-以下を確認する。
-
-- CSV解析へ進まないこと
-- 業務データを更新しないこと
-
----
-
-#### 29.58 利用者ID形式不正
-
-例えば、
-
-```http
-X-User-Id: abc
-```
-
-を指定する。
-
-期待結果：
-
-```text
-400 Bad Request
-INVALID_USER_ID
-```
-
-業務データが
-更新されないこと。
-
----
-
-#### 29.59 利用者不存在
-
-存在しない利用者を指定する。
-
-期待結果：
-
-```text
-404 Not Found
-USER_NOT_FOUND
-```
-
-となること。
-
----
-
-#### 29.60 論理削除済み利用者
-
-論理削除済み利用者を指定する。
-
-期待結果：
-
-```text
-404 Not Found
-USER_NOT_FOUND
-```
-
-となること。
-
----
-
-#### 29.61 他利用者データの非更新
-
-User Aとして
-CSV-006を実行する。
-
-実行前後で、
-User Bに属する以下が
-変更されないことを確認する。
-
-- `asset_accounts`
-- `holding_assets`
-- `month_end_asset_snapshots`
-- `month_end_holding_values`
-
----
-
-#### 29.62 正常レスポンス契約
-
-正常登録時、
-API共通の
-成功Envelope形式で
-返却されることを確認する。
-
-概念例：
-
-```json
-{
-  "data": {
-    "targetYearMonth": "2026-07",
-    "importedCount": 2
-  },
-  "requestId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-}
-```
-
-以下を確認する。
-
-- `201 Created`であること
-- `data`がobjectであること
-- `targetYearMonth`がstringであること
-- `importedCount`がintegerであること
-- `importedCount >= 1`であること
-- JSONフィールド名がcamelCaseであること
-- `requestId`が設定されること
-
----
-
-#### 29.63 返却しない情報
-
-正常レスポンスに、
-以下の情報が
-含まれていないことを確認する。
-
-- `users.id`
-- `asset_accounts.id`
-- `holding_assets.id`
-- `month_end_asset_snapshots.id`
-- `month_end_holding_values.id`
-- `asset_accounts.balance_recording_unit`
-- `month_end_asset_snapshots.confirmed`
-- `created_at`
-- `updated_at`
-- `asset_account_available_settings`
-- CSVファイル内容
-- CSV行番号
-- 登録した各`asset_accounts.name`
-- 登録した各`holding_assets.name`
-- 登録した各`month_end_holding_values.value`
-
----
-
-#### 29.64 エラーレスポンス契約
-
-以下の代表的な異常系について、
-API共通の
-エラーレスポンス形式となることを確認する。
-
-- `USER_CONTEXT_REQUIRED`
-- `INVALID_USER_ID`
-- `USER_NOT_FOUND`
-- `VALIDATION_ERROR`
-- `INVALID_CSV_FORMAT`
-- `CSV_DATA_REQUIRED`
-- `MULTIPLE_TARGET_YEAR_MONTHS`
-- `ASSET_ACCOUNT_NOT_FOUND`
-- `BALANCE_RECORDING_UNIT_MISMATCH`
-- `HOLDING_ASSET_NOT_FOUND`
-- `HOLDING_ASSET_NOT_AVAILABLE`
-- `INVALID_VALUE`
-- `DUPLICATE_HOLDING_ASSET_IN_CSV`
-- `MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED`
-- `MONTH_END_HOLDING_VALUE_ALREADY_EXISTS`
-- `INTERNAL_SERVER_ERROR`
-
-以下も確認する。
-
-- `error.code`が設定されること
-- `error.message`が設定されること
-- 必要に応じて`error.details`が設定されること
-- `requestId`が設定されること
-- SQLが含まれないこと
-- PostgreSQLの制約名が含まれないこと
-- スタックトレースが含まれないこと
-- サーバー内部ファイルパスが含まれないこと
-
----
-
-#### 29.65 同一CSVの再実行
-
-正常なCSVを1回登録した後、
-同じCSVを再度送信する。
-
-1回目：
-
-```text
-201 Created
-```
-
-2回目：
-
-```text
-409 Conflict
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-となること。
-
-同じレコードが
-重複登録されないこと。
-
----
-
-#### 29.66 通信失敗後の再送
-
-サーバー側では
-CSV登録が完了したが、
-クライアントが
-正常レスポンスを
-受信できなかった状態を想定する。
-
-同じCSVを再送した場合に、
-
-```text
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-となり得ることを確認する。
-
-再送によって
-重複データが
-作成されないこと。
-
----
-
-#### 29.67 Idempotency-Keyなし
-
-`Idempotency-Key`を指定せずに
-正常登録できることを確認する。
-
-また、
-`Idempotency-Key`を
-重複防止の前提として
-実装していないことを確認する。
-
-重複防止は、
-
-```text
-アプリケーション側重複確認
-+
-トランザクション
-+
-UNIQUE制約
-```
-
-によって保証する。
-
----
-
-#### 29.68 INTERNAL_SERVER_ERROR
-
-登録処理中に
-想定外の例外を発生させる。
-
-期待結果：
-
-```text
-500 Internal Server Error
-INTERNAL_SERVER_ERROR
-```
-
-以下を確認する。
-
-- トランザクションがロールバックされること
-- 一部登録データが残らないこと
-- 内部情報がレスポンスへ公開されないこと
-
----
-
-### 30 Laravel実装方針
-
-CSV-006では、
-Action、
-Request、
-UseCase、
-CSV Definition、
-CSV Parser、
-CSV Validator、
-業務Validator、
-Query、
-Repository、
-DTO、
-API Resource、
-Responderを分離して実装する。
-
-概念的な処理構成は、
-以下とする。
-
-```text
-Route
-    ↓
-Middleware
-    ↓
-Request
-    ↓
-Action
-    ↓
-UseCase
-    ├─ CSV Parser
-    ├─ CSV Validator
-    ├─ Import Validator
-    ├─ AssetAccountQuery
-    ├─ HoldingAssetQuery
-    ├─ AssetAccountAvailableSettingQuery
-    ├─ MonthEndAssetSnapshotQuery
-    ├─ MonthEndHoldingValueQuery
-    ├─ MonthEndAssetSnapshotRepository
-    └─ MonthEndHoldingValueRepository
-    ↓
-Import Result DTO
-    ↓
-API Resource
-    ↓
-Responder
-```
-
-CSV-006では、
-CSV-005と同じ
-CSV解析・登録可否判定ロジックを
-可能な限り共通利用する。
-
-一方、
-CSV-006固有の
-
-- トランザクション
-- snapshotの必要時作成
-- 排他制御
-- 既存評価額の最終確認
-- 商品別月末評価額の一括登録
-
-は、
-登録UseCase内で扱う。
-
----
-
-#### 30.1 Action
-
-Actionは、
-HTTPリクエストを受け付け、
-検証済みCSVファイルと
-操作対象利用者を取得し、
-登録UseCaseを呼び出す。
-
-概念例：
-
-```php
-final class ImportMonthEndHoldingValueCsvAction
-{
-    public function __invoke(
-        ImportMonthEndHoldingValueCsvRequest $request,
-        ImportMonthEndHoldingValueCsvUseCase $useCase,
-        MonthEndHoldingValueCsvImportResponder $responder,
-        userContext $userContext,
-    ): JsonResponse {
-        $result =
-            $useCase->execute(
-                userId:
-                    $userContext->userId,
-
-                file:
-                    $request->file('file'),
-            );
-
-        return $responder->created(
-            $result,
-        );
-    }
-}
-```
-
-Actionでは、
-以下を行わない。
-
-- CSV解析
-- CSVヘッダー検証
-- CSV入力値検証
-- 対象年月特定
-- CSV内重複判定
-- 資産口座検索
-- 保有商品検索
-- 残高記録単位判定
-- 対象年月時点の有効性判定
-- snapshot検索
-- 確定状態判定
-- 既存商品別月末評価額検索
-- トランザクション制御
-- lock取得
-- snapshot作成
-- 商品別月末評価額登録
-- レスポンス変換
-
-Actionは、
-UseCase呼び出しと
-Responderへの受け渡しに
-責務を限定する。
-
----
-
-#### 30.2 Request
-
-Requestでは、
-HTTPリクエストとして
-CSVファイルを
-受け付けられる状態かを検証する。
-
-概念例：
-
-```php
-final class ImportMonthEndHoldingValueCsvRequest
-    extends FormRequest
-{
-    public function rules(): array
-    {
-        return [
-            'file' => [
-                'required',
-                'file',
-                'mimes:csv',
-                'max:' . config(
-                    'csv.max_file_size_kb',
-                ),
-            ],
-        ];
-    }
-}
-```
-
-実際の
-
-- MIME Type
-- 拡張子
-- 最大ファイルサイズ
-
-は、
-CSV共通仕様に従う。
-
----
-
-#### 30.3 Requestで行うこと
-
-Requestでは、
-主に以下を検証する。
-
-- `file`必須
-- アップロードファイルであること
-- 許可されたファイル形式であること
-- ファイルサイズ上限以内であること
-
-これらは、
-CSV内容を解析する前に
-判定できる
-HTTP入力レベルの検証とする。
-
----
-
-#### 30.4 Requestで行わないこと
-
-Requestでは、
-以下を検証しない。
-
-- CSVヘッダー
-- CSVデータ行
-- `target_year_month`
-- `asset_account_name`
-- `holding_asset_name`
-- `value`
-- 1ファイル1対象年月
-- CSV内重複
-- 資産口座存在確認
-- 残高記録単位
-- 保有商品存在確認
-- 保有商品と資産口座の関連
-- 対象年月時点の有効性
-- snapshot存在確認
-- `confirmed`
-- 既存商品別月末評価額
-
-これらは、
-CSV Validator、
-業務Validator、
-Query、
-UseCaseで扱う。
-
----
-
-#### 30.5 Middleware
-
-以下の共通Middlewareを適用する。
-
-- 利用者コンテキスト設定
-- リクエストID生成
-- 共通例外処理
-- ログコンテキスト設定
-
-利用者コンテキスト設定Middlewareでは、
-`X-User-Id`を検証する。
-
-概念的には、
-以下とする。
-
-```text
-X-User-Id取得
-    ↓
-必須チェック
-    ↓
-形式チェック
-    ↓
-users存在確認
-    ↓
-userContext設定
-    ↓
-Request
-    ↓
-Action
-```
-
-Action以降では、
-検証済み利用者コンテキストを
-使用する。
-
----
-
-#### 30.6 UseCase
-
-CSV登録の
-ユースケース全体を担当する。
-
-主な処理は、
-以下とする。
-
-1. CSVファイルを解析する
-2. CSVヘッダーを検証する
-3. CSV各行の入力値を検証する
-4. 対象年月を特定する
-5. CSV内重複を検証する
-6. 資産口座を一括取得する
-7. 保有商品を一括取得する
-8. 対象年月時点の有効性を検証する
-9. snapshotを事前確認する
-10. 既存商品別月末評価額を確認する
-11. 全件登録可能であることを確認する
-12. トランザクションを開始する
-13. snapshotを最新状態で再取得する
-14. 必要ならsnapshotを作成する
-15. `confirmed`を再確認する
-16. 既存商品別月末評価額を再確認する
-17. 商品別月末評価額を一括登録する
-18. Import Result DTOを返す
-
-概念的には、
-以下とする。
-
-```text
-CSV解析
-    ↓
-事前検証
-    ↓
-業務データ一括取得
-    ↓
-登録可否判定
-    ↓
-DB::transaction
-    ↓
-snapshot最終確認
-    ↓
-snapshot必要時作成
-    ↓
-既存評価額最終確認
-    ↓
-一括登録
-    ↓
-Import Result DTO
-```
-
----
-
-#### 30.7 CSV-005との共通化
-
-CSV-005とCSV-006では、
-以下を共通利用する。
-
-```text
-MonthEndHoldingValueCsvDefinition
-MonthEndHoldingValueCsvParser
-MonthEndHoldingValueCsvValidator
-MonthEndHoldingValueCsvImportValidator
-AssetAccountQuery
-HoldingAssetQuery
-AssetAccountAvailableSettingQuery
-MonthEndAssetSnapshotQuery
-MonthEndHoldingValueQuery
-```
-
-概念的には、
-
-```text
-CSV-005
-    ↓
-共通解析・検証
-    ↓
-Preview DTO
-```
-
-```text
-CSV-006
-    ↓
-共通解析・検証
-    ↓
-登録処理
-```
-
-とする。
-
-同じ登録可否ルールを
-別々に実装しない。
-
----
-
-#### 30.8 CSV Definition
-
-CSV-004、
-CSV-005、
-CSV-006で使用する
-商品別月末評価額CSV仕様は、
-共通Definitionへ集約する。
-
-概念例：
-
-```php
-final class MonthEndHoldingValueCsvDefinition
-{
-    public const HEADERS = [
-        'target_year_month',
-        'asset_account_name',
-        'holding_asset_name',
-        'value',
-    ];
-}
-```
-
-CSV-006だけで
-独自のヘッダー定義を持たない。
-
----
-
-#### 30.9 CSV Parser
-
-CSVファイル解析は、
-専用Parserへ分離する。
-
-概念例：
-
-```php
-final class MonthEndHoldingValueCsvParser
-{
-    public function parse(
-        UploadedFile $file,
-    ): ParsedCsv {
-        // CSV解析
-    }
-}
-```
-
-Parserでは、
-主に以下を行う。
-
-- ファイルオープン
-- BOM処理
-- ヘッダー取得
-- データ行読み込み
-- 行番号保持
-- 完全な空行の除外
-- CSV構造異常検出
-
-業務データ検索や
-登録処理は行わない。
-
----
-
-#### 30.10 CSVヘッダー検証
-
-CSVヘッダーは、
-共通Definitionと
-完全一致することを確認する。
-
-概念例：
-
-```php
-if (
-    $parsedCsv->headers
-    !== MonthEndHoldingValueCsvDefinition::HEADERS
-) {
-    throw new InvalidCsvFormatException();
-}
-```
-
-以下を不正とする。
-
-- ヘッダー不足
-- ヘッダー名不一致
-- ヘッダー順序不一致
-- 余分なヘッダー
-
-ヘッダー不正時は、
-データベース検索へ進まない。
-
----
-
-#### 30.11 CSV Validator
-
-CSV各行の
-入力値検証は、
-CSV Validatorへ分離する。
-
-概念例：
-
-```php
-final class MonthEndHoldingValueCsvValidator
-{
-    public function validate(
-        ParsedCsv $csv,
-    ): CsvValidationResult {
-        // CSV入力値検証
-    }
-}
-```
-
-主に以下を検証する。
-
-```text
-target_year_month
-    required
-    YYYY-MM
-
-asset_account_name
-    required
-
-holding_asset_name
-    required
-
-value
-    required
-    integer
-    min:0
-```
-
-データベース検索は行わない。
-
----
-
-#### 30.12 valueの型変換
-
-`value`は、
-正常な整数形式の場合のみ
-integerへ変換する。
-
-以下を
-暗黙変換によって
-正常値にしてはならない。
-
-```text
-1000abc
-1000.5
-1,000
-¥1000
-```
-
-また、
-
-```text
-0
-```
-
-は
-正常値として扱う。
-
----
-
-#### 30.13 対象年月特定
-
-正常に解析できた
-`target_year_month`を収集し、
-単一対象年月であることを確認する。
-
-概念例：
-
-```php
-$targetYearMonths =
-    collect(
-        $rows,
-    )
-        ->pluck(
-            'targetYearMonth',
-        )
-        ->filter()
-        ->unique()
-        ->values();
-```
-
-2件以上存在する場合は、
-
-```text
-MULTIPLE_TARGET_YEAR_MONTHS
-```
-
-として扱う。
-
----
-
-#### 30.14 CSV内重複判定
-
-同一CSV内で、
 同じ
 
 ```text
-targetYearMonth
+asset_account_name
 +
-assetAccountName
-+
-holdingAssetName
+holding_asset_name
 ```
 
-が複数存在しないことを確認する。
-
-重複時は、
-
-```text
-DUPLICATE_HOLDING_ASSET_IN_CSV
-```
-
-として扱う。
-
-先勝ち・後勝ちにはしない。
+が複数行存在する場合は、
+CSV内重複として扱う。
 
 ---
 
-#### 30.15 Import Validator
-
-業務データを使用した
-登録可否判定は、
-専用Validatorへ分離する。
-
-概念的には、
-
-```text
-MonthEndHoldingValueCsvImportValidator
-```
-
-が、
-以下を判定する。
-
-- 資産口座存在
-- 残高記録単位
-- 保有商品存在
-- 保有商品と資産口座の関連
-- 対象年月時点の有効性
-- snapshot確定状態
-- 既存商品別月末評価額
-
-CSV-005でも
-同じValidatorを使用する。
-
----
-
-#### 30.16 AssetAccountQuery
-
-CSVで使用される
-資産口座名を収集し、
-操作対象利用者に属する
-資産口座を一括取得する。
-
-概念例：
-
-```php
-$assetAccounts =
-    $this->assetAccountQuery
-        ->findActiveByNames(
-            userId:
-                $userId,
-
-            names:
-                $assetAccountNames,
-        );
-```
-
-検索条件は、
-概念的に以下とする。
-
-```text
-user_id = 操作対象利用者ID
-AND
-name IN (...)
-AND
-deleted_at IS NULL
-```
-
----
-
-#### 30.17 HoldingAssetQuery
-
-対象資産口座と
-保有商品名を使用し、
-対象保有商品を
-一括取得する。
-
-概念例：
-
-```php
-$holdingAssets =
-    $this->holdingAssetQuery
-        ->findActiveByAssetAccountsAndNames(
-            assetAccountIds:
-                $assetAccountIds,
-
-            names:
-                $holdingAssetNames,
-        );
-```
-
-保有商品名だけで
-全利用者・全資産口座から
-検索しない。
-
----
-
-#### 30.18 Map化
-
-取得結果は、
-CSV行ごとの検証を
-メモリ上で行えるよう、
-Map化してよい。
-
-資産口座：
-
-```text
-assetAccountName
-    → AssetAccount
-```
-
-保有商品：
-
-```text
-assetAccountId
-+
-holdingAssetName
-    → HoldingAsset
-```
-
-これにより、
-CSV行ごとの
-追加SQLを避ける。
-
----
-
-#### 30.19 残高記録単位判定
-
-対象資産口座の
-
-```text
-balance_recording_unit
-```
-
-が
-商品単位であることを確認する。
-
-概念例：
-
-```php
-if (
-    $assetAccount->balance_recording_unit
-    !== BalanceRecordingUnit::HOLDING
-) {
-    throw new BalanceRecordingUnitMismatchException();
-}
-```
-
-実際のEnum・定数名は、
-共通設計に従う。
-
----
-
-#### 30.20 対象年月時点の有効性判定
-
-対象保有商品が、
-CSVの対象年月時点で
-記録対象として有効かを判定する。
-
-必要な
-`asset_account_available_settings`を
-一括取得し、
-業務Validatorへ渡す。
-
-現在日時ではなく、
-必ず
-
-```text
-targetYearMonth
-```
-
-を基準にする。
-
----
-
-#### 30.21 MonthEndAssetSnapshotQuery
-
-事前検証では、
-操作対象利用者・対象年月から
-snapshotを取得する。
-
-概念例：
-
-```php
-$snapshot =
-    $this->snapshotQuery
-        ->findByUserAndTargetYearMonth(
-            userId:
-                $userId,
-
-            targetYearMonth:
-                $targetYearMonth,
-        );
-```
-
-事前検証時には、
-原則として
-`lockForUpdate()`を使用しない。
-
----
-
-#### 30.22 snapshot不存在
-
-事前検証時に
-snapshotが存在しなくても、
-それだけでは
-登録不可としない。
-
-CSV-006では、
-トランザクション内で
-必要に応じて作成する。
-
----
-
-#### 30.23 確定済みsnapshot
-
-事前検証時点で、
-
-```text
-confirmed = true
-```
-
-の場合は、
-
-```text
-MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
-```
-
-として登録不可とする。
-
-ただし、
-最終的な状態確認は
-トランザクション内でも行う。
-
----
-
-#### 30.24 MonthEndHoldingValueQuery
-
-snapshotが存在する場合は、
-対象保有商品について
-既存の商品別月末評価額を
-一括取得する。
-
-概念例：
-
-```php
-$existingValues =
-    $this->monthEndHoldingValueQuery
-        ->findBySnapshotAndHoldingAssets(
-            snapshotId:
-                $snapshot->id,
-
-            holdingAssetIds:
-                $holdingAssetIds,
-        );
-```
-
-CSV行ごとに
-重複確認SQLを発行しない。
-
----
-
-#### 30.25 事前検証後にトランザクションを開始する
-
-CSV解析や
-基本的な業務検証が
-完了した後に、
-
-```php
-DB::transaction(
-    function () {
-        // DB更新処理
-    },
-);
-```
-
-を開始する。
-
-CSVファイル解析開始時点から
-トランザクションを
-保持しない。
-
----
-
-#### 30.26 トランザクション内の再取得
-
-事前検証で使用した
-snapshot状態を
-そのまま最終判断には使用しない。
-
-トランザクション内で
-対象年月のsnapshotを
-最新状態で再取得する。
-
-概念例：
-
-```php
-$snapshot =
-    $this->snapshotRepository
-        ->findForUpdateByUserAndTargetYearMonth(
-            userId:
-                $userId,
-
-            targetYearMonth:
-                $targetYearMonth,
-        );
-```
-
----
-
-#### 30.27 lockForUpdate
-
-既存snapshotが存在する場合は、
-必要に応じて
-`lockForUpdate()`を使用する。
-
-概念例：
-
-```php
-return MonthEndAssetSnapshot::query()
-    ->where(
-        'user_id',
-        $userId,
-    )
-    ->where(
-        'target_year_month',
-        $targetYearMonth,
-    )
-    ->lockForUpdate()
-    ->first();
-```
-
-これにより、
-CSV登録中に
-同じsnapshotの
-確定処理などが
-競合することを抑制する。
-
----
-
-#### 30.28 snapshotの必要時作成
-
-トランザクション内で
-snapshotが存在しない場合は、
-Repositoryを使用して
-新規作成する。
-
-概念例：
-
-```php
-$snapshot =
-    $this->snapshotRepository
-        ->create(
-            userId:
-                $userId,
-
-            targetYearMonth:
-                $targetYearMonth,
-
-            confirmed:
-                false,
-        );
-```
-
-新規作成したsnapshotも
-同一トランザクション内で扱う。
-
----
-
-#### 30.29 snapshot重複作成への対応
-
-同一利用者・同一対象年月について、
-
-```text
-user_id
-+
-target_year_month
-```
-
-にUNIQUE制約を設定する。
-
-snapshot不存在時は、
-対象行そのものがないため
-`lockForUpdate()`だけでは
-重複作成を完全に防げない。
+#### 29.18 importedCountだけを返却する理由
+
+CSV-006実行前には、
+CSV-005で
+登録予定内容を確認できる。
 
 そのため、
-UNIQUE制約を
-最終防衛線とする。
-
-競合が発生した場合は、
-API共通方針に沿って
-再取得または
-適切な競合処理を行う。
-
----
-
-#### 30.30 confirmedの最終確認
-
-既存snapshotを
-トランザクション内で取得した後、
-再度
-
-```text
-confirmed
-```
-
-を確認する。
-
-概念例：
-
-```php
-if (
-    $snapshot->confirmed
-) {
-    throw new
-        MonthEndAssetSnapshotAlreadyConfirmedException();
-}
-```
-
-CSV-005や
-事前検証時の状態を
-最終判断には使用しない。
-
----
-
-#### 30.31 既存評価額の最終確認
-
-トランザクション内でも、
-対象保有商品について
-既存の商品別月末評価額を
-再確認する。
-
-概念例：
-
-```php
-$existingValues =
-    $this->monthEndHoldingValueRepository
-        ->findExistingForUpdate(
-            snapshotId:
-                $snapshot->id,
-
-            holdingAssetIds:
-                $holdingAssetIds,
-        );
-```
-
-ただし、
-存在しないレコードそのものを
-ロックすることはできないため、
-最終的には
-UNIQUE制約も利用する。
-
----
-
-#### 30.32 UNIQUE制約
-
-`month_end_holding_values`には、
-概念的に以下の
-UNIQUE制約を設定する。
-
-```text
-month_end_asset_snapshot_id
-+
-holding_asset_id
-```
-
-アプリケーション側の
-重複確認と
-データベース制約の
-二段構えとする。
-
----
-
-#### 30.33 Repository
-
-CSV-006では、
-DB更新が存在するため
-Repositoryを使用する。
-
-主に以下を担当する。
-
-```text
-MonthEndAssetSnapshotRepository
-    → snapshot作成
-    → 更新ロック付き取得
-
-MonthEndHoldingValueRepository
-    → 既存評価額最終確認
-    → 商品別月末評価額一括登録
-```
-
-Queryは
-参照・判定用、
-Repositoryは
-更新処理用として
-責務を分ける。
-
----
-
-#### 30.34 MonthEndHoldingValueRepository
-
-商品別月末評価額の
-一括登録を担当する。
-
-概念例：
-
-```php
-$this->monthEndHoldingValueRepository
-    ->insertMany(
-        $rows,
-    );
-```
-
-登録データは、
-概念的に以下とする。
-
-```php
-[
-    [
-        'month_end_asset_snapshot_id'
-            => $snapshot->id,
-
-        'holding_asset_id'
-            => $holdingAssetId,
-
-        'value'
-            => $value,
-
-        'created_at'
-            => $now,
-
-        'updated_at'
-            => $now,
-    ],
-]
-```
-
-CSVの名称文字列を
-そのまま保存しない。
-
----
-
-#### 30.35 一括INSERT
-
-可能な限り、
-複数行を
-一括INSERTする。
-
-概念例：
-
-```php
-MonthEndHoldingValue::query()
-    ->insert(
-        $insertRows,
-    );
-```
-
-ただし、
-timestamp自動設定など
-Eloquentイベントに依存する場合は、
-その影響を理解したうえで
-実装方式を選択する。
-
-Phase1では、
-大量データ向けの
-複雑なBatch基盤は導入しない。
-
----
-
-#### 30.36 現在時刻
-
-`created_at`、
-`updated_at`を
-一括INSERTで設定する場合は、
-同一処理内で取得した
-同じ現在時刻を使用してよい。
-
-概念例：
-
-```php
-$now =
-    now();
-```
-
-CSV行ごとに
-個別に`now()`を呼び出す必要はない。
-
----
-
-#### 30.37 全件成功・全件失敗
-
-CSV-006では、
-部分登録を許可しない。
-
-Repositoryで
-一部だけ登録された後に
-例外が発生した場合でも、
-トランザクションによって
-全件ロールバックする。
-
----
-
-#### 30.38 UNIQUE制約違反の変換
-
-同時実行などにより、
-
-```text
-month_end_asset_snapshot_id
-+
-holding_asset_id
-```
-
-のUNIQUE制約違反が
-発生する可能性がある。
-
-この場合、
-データベース例外を
-そのまま500として返却しない。
-
-可能な限り、
-
-```text
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-へ変換し、
-
-```text
-409 Conflict
-```
-
-として扱う。
-
-PostgreSQLの
-制約名やSQLを
-レスポンスへ公開しない。
-
----
-
-#### 30.39 snapshot UNIQUE制約違反
-
-snapshot新規作成時に、
-
-```text
-user_id
-+
-target_year_month
-```
-
-のUNIQUE制約違反が
-発生した場合は、
-同時実行で
-別処理が先にsnapshotを
-作成した可能性がある。
-
-この場合は、
-必要に応じて
-既存snapshotを再取得し、
-その状態を確認する。
-
-ただし、
-無制限なリトライ処理は
-導入しない。
-
----
-
-#### 30.40 Import Result DTO
-
-正常登録結果は、
-専用DTOで表現する。
-
-概念例：
-
-```php
-final readonly class MonthEndHoldingValueCsvImportResult
-{
-    public function __construct(
-        public string $targetYearMonth,
-        public int $importedCount,
-    ) {
-    }
-}
-```
-
-内部IDや
-Eloquent Modelを
-そのまま返却しない。
-
----
-
-#### 30.41 importedCount
-
-`importedCount`は、
-実際に新規登録した
-
-```text
-month_end_holding_values
-```
-
-の件数とする。
-
-例えば、
-
-```php
-$importedCount =
-    count(
-        $insertRows,
-    );
-```
-
-とする。
-
-snapshot作成件数は
-含めない。
-
----
-
-#### 30.42 API Resource
-
-Import Result DTOを、
-専用API Resourceで
-レスポンス形式へ変換する。
-
-概念例：
-
-```php
-final class MonthEndHoldingValueCsvImportResultResource
-    extends JsonResource
-{
-    public function toArray(
-        Request $request,
-    ): array {
-        return [
-            'targetYearMonth'
-                => $this->targetYearMonth,
-
-            'importedCount'
-                => $this->importedCount,
-        ];
-    }
-}
-```
-
-JSONフィールド名は、
-API共通方針に従って
-camelCaseとする。
-
----
-
-#### 30.43 Responder
-
-Responderは、
-Import Result DTOを
-`201 Created`レスポンスへ変換する。
-
-概念例：
-
-```php
-final class MonthEndHoldingValueCsvImportResponder
-{
-    public function created(
-        MonthEndHoldingValueCsvImportResult $result,
-    ): JsonResponse {
-        return response()->json(
-            [
-                'data'
-                    => new
-                    MonthEndHoldingValueCsvImportResultResource(
-                        $result,
-                    ),
-            ],
-            Response::HTTP_CREATED,
-        );
-    }
-}
-```
-
-`requestId`などの
-共通項目は、
-API共通レスポンス処理に従う。
-
----
-
-#### 30.44 Responderで行わないこと
-
-Responderでは、
-以下を行わない。
-
-- CSV解析
-- CSV検証
-- 登録可否判定
-- DB検索
-- transaction制御
-- snapshot作成
-- 商品別月末評価額登録
-- importedCount再計算
-
-Responderは、
-生成済み結果を
-HTTPレスポンスへ変換することに
-責務を限定する。
-
----
-
-#### 30.45 返却しない情報
-
-API Resourceでは、
-以下を返却しない。
-
-- `users.id`
-- `asset_accounts.id`
-- `holding_assets.id`
-- `month_end_asset_snapshots.id`
-- `month_end_holding_values.id`
-- `asset_accounts.balance_recording_unit`
-- `month_end_asset_snapshots.confirmed`
-- `created_at`
-- `updated_at`
-- CSVファイル内容
-- CSV行番号
-- 登録した各`value`
-
-成功レスポンスは、
+CSV-006の成功レスポンスで
+登録した商品別月末評価額を
+すべて再返却する必要はない。
+
+登録成功の確認に必要な
 
 ```text
 targetYearMonth
 importedCount
 ```
 
-に限定する。
-
----
-
-#### 30.46 エラー変換
-
-主な例外変換は、
-以下とする。
-
-| 内部状態 | 独自エラーコード |
-|---|---|
-| `X-User-Id`未指定 | `USER_CONTEXT_REQUIRED` |
-| `X-User-Id`形式不正 | `INVALID_USER_ID` |
-| 利用者不存在 | `USER_NOT_FOUND` |
-| `file`不正 | `VALIDATION_ERROR` |
-| CSV解析不能 | `INVALID_CSV_FORMAT` |
-| CSVヘッダー不正 | `INVALID_CSV_FORMAT` |
-| データ行0件 | `CSV_DATA_REQUIRED` |
-| 複数対象年月 | `MULTIPLE_TARGET_YEAR_MONTHS` |
-| 資産口座不存在 | `ASSET_ACCOUNT_NOT_FOUND` |
-| 残高記録単位不一致 | `BALANCE_RECORDING_UNIT_MISMATCH` |
-| 保有商品不存在 | `HOLDING_ASSET_NOT_FOUND` |
-| 対象年月時点で無効 | `HOLDING_ASSET_NOT_AVAILABLE` |
-| `value`不正 | `INVALID_VALUE` |
-| CSV内重複 | `DUPLICATE_HOLDING_ASSET_IN_CSV` |
-| snapshot確定済み | `MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED` |
-| 既存評価額あり | `MONTH_END_HOLDING_VALUE_ALREADY_EXISTS` |
-| 想定外例外 | `INTERNAL_SERVER_ERROR` |
-
-実際のコード名は、
-共通エラーコード定義に合わせる。
-
----
-
-#### 30.47 複数入力エラー
-
-トランザクション開始前の
-CSV検証段階では、
-可能な範囲で
-複数エラーを収集してよい。
-
-この場合は、
-API共通エラー形式の
-
-```text
-error.details
-```
-
-へ格納する。
-
-ただし、
-CSV-006では
-1件でもエラーが存在すれば
-登録処理へ進まない。
-
----
-
-#### 30.48 INTERNAL_SERVER_ERROR
-
-想定外の例外は、
-API共通Exception Handlerで
-
-```text
-INTERNAL_SERVER_ERROR
-```
-
-へ変換する。
-
-レスポンスへ
-以下を含めない。
-
-- SQL
-- PostgreSQL内部エラー
-- UNIQUE制約名
-- テーブル名
-- カラム名
-- PHP内部エラー
-- Laravel内部例外メッセージ
-- スタックトレース
-- サーバーファイルパス
-
-詳細は、
-サーバーログへ記録する。
-
----
-
-#### 30.49 ログ
-
-必要に応じて、
-以下をログコンテキストへ設定する。
-
-```text
-requestId
-userId
-apiId
-targetYearMonth
-rowCount
-importedCount
-errorCode
-```
-
-`apiId`は、
-
-```text
-CSV-006
-```
-
-とする。
-
-CSVファイル全文や
-全評価額を
-不要にログへ出力しない。
-
----
-
-#### 30.50 キャッシュ
-
-Phase1では、
-CSV-006専用の
-サーバー側アプリケーションキャッシュを
-使用しない。
-
-登録可否は、
-最新のDB状態を使用して判断する。
-
-古い
-
-- snapshot
-- confirmed
-- existing values
-- asset account
-- holding asset
-
-を使用しない。
-
----
-
-#### 30.51 Idempotency-Key
-
-Phase1では、
-`Idempotency-Key`を使用しない。
-
-重複登録は、
-
-- 事前重複確認
-- トランザクション
-- `lockForUpdate()`
-- UNIQUE制約
-- フロントエンドの二重送信防止
-
-によって制御する。
-
----
-
-#### 30.52 テスト実装方針
-
-Laravel側では、
-Feature Testを中心として
-CSV-006のAPI契約と
-一括登録フローを確認する。
-
-主に以下を確認する。
-
-- `201 Created`
-- `400 Bad Request`
-- `404 Not Found`
-- `409 Conflict`
-- `422 Unprocessable Entity`
-- `500 Internal Server Error`
-- `file`必須
-- ファイル形式
-- ファイルサイズ
-- CSVヘッダー
-- データ行0件
-- 対象年月
-- 1ファイル1対象年月
-- 資産口座存在
-- 利用者境界
-- 残高記録単位
-- 保有商品存在
-- 資産口座と保有商品の関連
-- 対象年月時点の有効性
-- `value`
-- 0円
-- CSV内重複
-- snapshot不存在時の作成
-- snapshot未確定
-- snapshot確定済み
-- 既存商品別月末評価額
-- 一部登録されないこと
-- rollback
-- snapshot重複作成防止
-- 商品別月末評価額重複防止
-- `targetYearMonth`
-- `importedCount`
-
----
-
-#### 30.53 CSV Parser・ValidatorのUnit Test
-
-CSV Parserおよび
-CSV Validatorは、
-CSV-005と共通であるため、
-同じUnit Testを使用する。
-
-以下を重点的に確認する。
-
-```text
-ヘッダー
-BOM
-空行
-target_year_month
-asset_account_name
-holding_asset_name
-value
-CSV内重複
-```
-
-CSV-005用と
-CSV-006用で
-同じテストケースを
-二重管理しない。
-
----
-
-#### 30.54 Import ValidatorのUnit Test
-
-業務Validatorについて、
-以下を確認する。
-
-```text
-資産口座なし
-    → ASSET_ACCOUNT_NOT_FOUND
-
-口座単位
-    → BALANCE_RECORDING_UNIT_MISMATCH
-
-保有商品なし
-    → HOLDING_ASSET_NOT_FOUND
-
-対象年月時点で無効
-    → HOLDING_ASSET_NOT_AVAILABLE
-
-snapshotなし
-    → それだけではエラーにしない
-
-snapshot未確定
-    → 正常
-
-snapshot確定済み
-    → MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
-
-既存評価額あり
-    → MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-CSV-005とCSV-006で
-同じValidator結果になることを確認する。
-
----
-
-#### 30.55 RepositoryのDatabase Test
-
-`MonthEndAssetSnapshotRepository`では、
-以下を確認する。
-
-- 未確定snapshotを取得できる
-- `user_id + target_year_month`で取得できる
-- 他利用者のsnapshotを取得しない
-- snapshotを`confirmed = false`で作成できる
-- UNIQUE制約が維持される
-
-`MonthEndHoldingValueRepository`では、
-以下を確認する。
-
-- 複数件を一括登録できる
-- 正しいsnapshotへ紐づく
-- 正しいholdingAssetへ紐づく
-- `value = 0`を保存できる
-- UNIQUE制約が維持される
-
----
-
-#### 30.56 UseCaseのUnit Test
-
-UseCaseでは、
-Parser、
-Validator、
-Query、
-Repositoryを組み合わせて
-正しい登録結果になることを確認する。
-
-概念的には、
-
-```text
-Parsed CSV
-+
-CSV Validation
-+
-Business Validation
-+
-Queries
-    ↓
-ImportMonthEndHoldingValueCsvUseCase
-    ↓
-Transaction
-    ↓
-Repositories
-    ↓
-Import Result DTO
-```
-
-を確認する。
-
-特に、
-
-```text
-snapshotなし
-    ↓
-snapshot作成
-    ↓
-holding values登録
-```
-
-```text
-snapshotあり未確定
-    ↓
-既存snapshot使用
-```
-
-```text
-snapshot確定済み
-    ↓
-登録しない
-```
-
-```text
-既存評価額あり
-    ↓
-登録しない
-```
-
-を確認する。
-
----
-
-#### 30.57 トランザクションテスト
-
-意図的に
-商品別月末評価額登録途中で
-例外を発生させ、
-
-```text
-ROLLBACK
-```
-
-されることを確認する。
-
-特に、
-CSV-006内で
-snapshotを新規作成した場合は、
-snapshotも
-ロールバックされることを確認する。
-
----
-
-#### 30.58 並行実行テスト
-
-可能であれば、
-Database Testまたは
-Integration Testで
-並行実行を確認する。
-
-主な観点は、
-以下とする。
-
-```text
-同一利用者
-+
-同一対象年月
-+
-snapshot不存在
-```
-
-で
-複数登録が走っても、
-snapshotが
-重複作成されないこと。
-
-また、
-
-```text
-同一snapshot
-+
-同一holding_asset
-```
-
-について
-複数登録が走っても、
-商品別月末評価額が
-重複登録されないことを確認する。
-
----
-
-#### 30.59 CSV-005との整合性テスト
-
-同一利用者、
-同一DB状態、
-同一CSVで、
-
-```text
-CSV-005
-canImport = true
-```
-
-となった場合に、
-DB状態を変更せず
-CSV-006を実行すると
-登録成功することを確認する。
-
-逆に、
-CSV-005後に
-
-```text
-confirmed = true
-```
-
-へ変更した場合は、
-CSV-006が
-
-```text
-409 Conflict
-MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
-```
-
-となることを確認する。
+を中心とした
+最小限の結果を返却する。
 
 これにより、
-
-```text
-CSV-005
-    → 事前確認
-
-CSV-006
-    → 最新状態で再検証
-```
-
-という責務分離を保証する。
+登録APIのレスポンスを
+簡潔に保つ。
 
 ---
 
-### 31. React・TypeScriptでの利用
+#### 29.19 内部IDをレスポンスへ返却しない理由
 
-CSV-006は、CSV-005 商品別月末評価額CSVプレビューで内容を確認した後に、同じCSVファイルを再送して商品別月末評価額を一括登録する際に使用する。 :contentReference[oaicite:0]{index=0}
-
-CSV-006は業務データを変更するPOST APIであるため、TanStack Queryを使用する場合はMutationとして扱う。
-
-概念的な利用フローは、以下とする。
+CSV-006の処理では、
 
 ```text
-CSVファイル選択
-    ↓
-CSV-005
-商品別月末評価額CSVプレビュー
-    ↓
-canImport = true
-    ↓
-プレビュー内容表示
-    ↓
-利用者が登録実行
-    ↓
-CSV-006
-同じCSVファイルを再送
-    ↓
-サーバー側で再検証
-    ↓
-201 Created
-    ↓
-関連Query Cache無効化
-    ↓
-最新データ再取得
+asset_account_id
+holding_asset_id
+month_end_asset_snapshot_id
+month_end_holding_value_id
 ```
 
----
-
-#### 31.1 TypeScript型
-
-CSV-006では、`multipart/form-data`でCSVファイルを送信する。
-
-API呼び出しに必要な値は、
-
-```text
-file
-```
-
-のみとする。
-
-概念例：
-
-```ts
-export type ImportMonthEndHoldingValueCsvVariables = {
-  file: File;
-};
-```
-
-`userId`、`targetYearMonth`、`assetAccountId`、`holdingAssetId`などをMutation引数へ含めない。
-
----
-
-#### 31.2 正常レスポンス型
-
-CSV-006の正常レスポンスは、以下の型として定義する。
-
-概念例：
-
-```ts
-export type MonthEndHoldingValueCsvImportResult = {
-  targetYearMonth: string;
-  importedCount: number;
-};
-```
-
-API共通Envelopeを使用する場合は、以下のように定義する。
-
-```ts
-export type ImportMonthEndHoldingValueCsvResponse =
-  ApiResponse<MonthEndHoldingValueCsvImportResult>;
-```
-
-レスポンス例：
-
-```json
-{
-  "data": {
-    "targetYearMonth": "2026-07",
-    "importedCount": 2
-  },
-  "requestId": "01JABCDEFGHJKMNPQRSTVWXYZ"
-}
-```
-
----
-
-#### 31.3 importedCount
-
-`importedCount`は、実際に新規登録された
-
-```text
-month_end_holding_values
-```
-
-の件数として扱う。
-
-型は、
-
-```text
-number
-```
-
-とする。
-
-正常レスポンスでは1以上となる。
-
----
-
-#### 31.4 targetYearMonth
-
-`targetYearMonth`は、
-
-```text
-YYYY-MM
-```
-
-形式のstringとして扱う。
-
-概念例：
-
-```ts
-targetYearMonth: string;
-```
-
-必要に応じて、画面表示時に
-
-```text
-2026-07
-    ↓
-2026年7月
-```
-
-などへ変換する。
-
----
-
-#### 31.5 API Client
-
-CSV-006を呼び出す専用API Client関数を定義する。
-
-概念例：
-
-```ts
-export const importMonthEndHoldingValueCsv =
-  async (
-    file: File,
-  ): Promise<MonthEndHoldingValueCsvImportResult> => {
-    const formData =
-      new FormData();
-
-    formData.append(
-      'file',
-      file,
-    );
-
-    const response =
-      await apiClient.post<
-        ImportMonthEndHoldingValueCsvResponse
-      >(
-        '/api/v1/month-end-holding-values/imports',
-        formData,
-      );
-
-    return response.data.data;
-  };
-```
-
-コンポーネントから直接`fetch`や`axios`を呼び出さない。
-
----
-
-#### 31.6 Content-Typeを手動設定しない
-
-CSV-006では、`FormData`を使用する。
-
-そのため、以下のように
-
-```ts
-headers: {
-  'Content-Type': 'multipart/form-data',
-}
-```
-
-を手動設定しないことを基本とする。
-
-ブラウザまたはHTTPクライアントに
-
-```text
-boundary
-```
-
-を含む`Content-Type`生成を任せる。
-
-概念的には、
-
-```ts
-await apiClient.post(
-  '/api/v1/month-end-holding-values/imports',
-  formData,
-);
-```
-
-とする。
-
----
-
-#### 31.7 X-User-Id
-
-`X-User-Id`は、CSV-006専用処理ではなく、共通API Clientから付与する。
-
-概念例：
-
-```ts
-apiClient.interceptors.request.use(
-  (config) => {
-    config.headers['X-User-Id'] =
-      currentUserId;
-
-    return config;
-  },
-);
-```
-
-CSVアップロードComponentやMutation Hookから直接設定しない。
-
----
-
-#### 31.8 userIdをMutation引数へ含めない
-
-以下のようなMutation関数にはしない。
-
-```ts
-importMonthEndHoldingValueCsv(
-  userId,
-  file,
-);
-```
-
-利用者IDは、共通API Clientが
-
-```text
-X-User-Id
-```
-
-として付与する。
-
-CSV-006固有の入力は、
-
-```text
-file
-```
-
-だけとする。
-
----
-
-#### 31.9 Mutationとして扱う
-
-CSV-006は商品別月末評価額を新規登録するため、TanStack QueryではMutationとして扱う。
-
-概念例：
-
-```ts
-export const useImportMonthEndHoldingValueCsv =
-  () => {
-    return useMutation({
-      mutationFn:
-        ({
-          file,
-        }: ImportMonthEndHoldingValueCsvVariables) =>
-          importMonthEndHoldingValueCsv(
-            file,
-          ),
-    });
-  };
-```
-
-Queryとして実装しない。
-
----
-
-#### 31.10 CSV-005との責務分離
-
-CSV-005は、CSV内容のプレビューおよび登録可否確認を行う。
-
-CSV-006は、実際の登録処理を行う。
-
-概念的には、
-
-```text
-CSV-005
-    → Queryではなく
-      プレビュー用POST
-    → 業務データ更新なし
-
-CSV-006
-    → Mutation
-    → 業務データ更新あり
-```
-
-とする。
-
-HTTPメソッドがどちらもPOSTであっても、フロントエンド上の責務は明確に分離する。
-
----
-
-#### 31.11 CSV-005と同じFileを保持する
-
-CSV-005成功後にCSV-006を実行するため、選択された
-
-```text
-File
-```
-
-を登録完了またはファイル再選択まで保持する。
-
-概念的には、
-
-```ts
-const [
-  selectedFile,
-  setSelectedFile,
-] = useState<File | null>(
-  null,
-);
-```
-
-とする。
-
-CSV-005のプレビュー結果だけを保持し、元のFileを破棄しない。
-
----
-
-#### 31.12 previewIdを保持しない
-
-CSV-006では、
-
-```text
-previewId
-previewToken
-```
-
-を使用しない。
-
-そのため、React側でもCSV-005実行後に登録用IDを保持する設計にはしない。
-
-概念的には、
-
-```text
-CSV-005
-    ↓
-Preview Result
-+
-元のFile
-    ↓
-CSV-006
-元のFileを再送
-```
-
-とする。
-
----
-
-#### 31.13 canImportを登録保証として扱わない
-
-CSV-005で
-
-```text
-canImport === true
-```
-
-の場合に登録ボタンを表示・活性化してよい。
+などの
+内部IDを使用する。
 
 ただし、
+これらはバックエンド内部の
+関連付けに必要な情報であり、
+CSV登録結果として
+フロントエンドへ公開する必要はない。
+
+CSV-006の成功レスポンスでは、
+業務上必要な情報だけを返却する。
+
+---
+
+#### 29.20 409 Conflictを使用する理由
+
+確定済み月末資産状況や
+既存商品別月末評価額は、
+CSVファイル自体が
+解析不能なわけではない。
+
+CSV-006実行時点の
+サーバー側業務状態と競合し、
+登録できない状態である。
+
+そのため、
+これらの競合については、
 
 ```text
-canImport = true
-    =
-CSV-006も必ず成功する
-```
-
-とは扱わない。
-
-CSV-005とCSV-006の間に業務状態が変更される可能性があるためである。
-
----
-
-#### 31.14 登録ボタン
-
-CSV-005の結果が
-
-```text
-canImport = true
-```
-
-の場合にのみ、登録ボタンを活性化してよい。
-
-概念例：
-
-```tsx
-<button
-  type="button"
-  disabled={
-    !preview.data?.canImport ||
-    importMutation.isPending
-  }
-  onClick={
-    handleImport
-  }
->
-  登録する
-</button>
-```
-
-ただし、最終的な登録可否はCSV-006のバックエンド処理で保証する。
-
----
-
-#### 31.15 CSV-005未実行でのCSV-006送信をフロントでは防いでよい
-
-通常の画面フローでは、
-
-```text
-ファイル選択
-    ↓
-CSV-005
-    ↓
-内容確認
-    ↓
-CSV-006
-```
-
-とする。
-
-そのため、CSV-005未実行状態では登録ボタンを表示しない、または非活性にしてよい。
-
-ただし、CSV-006自体はCSV-005の実行履歴に依存せず単体で安全に検証できるAPIとする。
-
----
-
-#### 31.16 handleImport
-
-概念例：
-
-```ts
-const handleImport =
-  async (): Promise<void> => {
-    if (
-      selectedFile === null
-    ) {
-      return;
-    }
-
-    await importMutation.mutateAsync({
-      file:
-        selectedFile,
-    });
-  };
-```
-
-CSV内容をReact側で再構築して送信しない。
-
-選択済みの元CSVファイルを送信する。
-
----
-
-#### 31.17 FormDataへ余分な値を追加しない
-
-以下のような実装にはしない。
-
-```ts
-formData.append(
-  'targetYearMonth',
-  preview.targetYearMonth,
-);
-
-formData.append(
-  'canImport',
-  'true',
-);
-
-formData.append(
-  'previewId',
-  preview.id,
-);
-```
-
-CSV-006へ送信する業務項目は、
-
-```text
-file
-```
-
-だけとする。
-
----
-
-#### 31.18 CSV内容をクライアントで書き換えない
-
-CSV-005のプレビュー結果をもとに、React側で新しいCSVを生成し直してCSV-006へ送信しない。
-
-概念的には、
-
-```text
-利用者が選択したCSV
-    ↓
-CSV-005
-
-同じFile
-    ↓
-CSV-006
-```
-
-とする。
-
----
-
-#### 31.19 二重送信防止
-
-CSV-006実行中は、登録ボタンを非活性化する。
-
-概念例：
-
-```tsx
-<button
-  disabled={
-    importMutation.isPending
-  }
->
-  {importMutation.isPending
-    ? '登録中...'
-    : '登録する'}
-</button>
-```
-
-これにより、意図しない連続クリックを抑制する。
-
----
-
-#### 31.20 フロントエンドの二重送信防止だけに依存しない
-
-ボタン非活性化は、UX上の重複送信防止である。
-
-バックエンドでは、
-
-```text
-重複確認
-トランザクション
-UNIQUE制約
-```
-
-によって最終的な整合性を保証する。
-
-React側の制御をデータ整合性保証とはしない。
-
----
-
-#### 31.21 Mutation中の画面操作
-
-CSV-006実行中は、少なくとも以下を制御してよい。
-
-- 登録ボタンを非活性化
-- CSVファイル再選択を非活性化
-- 再プレビューボタンを非活性化
-
-登録中に対象Fileが切り替わらないようにする。
-
----
-
-#### 31.22 成功時
-
-CSV-006が成功した場合は、
-
-```http
-201 Created
+409 Conflict
 ```
 
 として扱う。
 
-Mutation成功時に、例えば
-
-```text
-2026年7月の商品別月末評価額を
-2件登録しました。
-```
-
-などの完了表示を行ってよい。
-
-表示値には、
-
-```text
-targetYearMonth
-importedCount
-```
-
-を使用する。
-
----
-
-#### 31.23 成功メッセージ
-
-概念例：
-
-```ts
-const message =
-  `${formatYearMonth(
-    result.targetYearMonth,
-  )}の商品別月末評価額を`
-  + `${result.importedCount}件登録しました。`;
-```
-
-文言は、画面設計を正とする。
-
----
-
-#### 31.24 登録後にプレビュー状態を破棄する
-
-CSV-006成功後は、同じCSVを誤って再登録しないよう、
-
-```text
-selectedFile
-previewResult
-```
-
-をクリアしてよい。
-
-概念例：
-
-```ts
-setSelectedFile(
-  null,
-);
-
-setPreviewResult(
-  null,
-);
-```
-
-画面遷移する場合は、遷移によって状態が破棄されてもよい。
-
----
-
-#### 31.25 成功後の画面遷移
-
-CSV登録成功後は、例えば
-
-```text
-月末資産状況詳細画面
-```
-
-へ遷移してよい。
-
-レスポンスには`snapshotId`が含まれないため、遷移方法は画面設計に応じて決定する。
-
-例えば、`targetYearMonth`を使って対象年月の一覧・詳細へ戻る設計としてよい。
-
----
-
-#### 31.26 成功後に登録内容をレスポンスから再構築しない
-
-CSV-006成功レスポンスには、
-
-```text
-targetYearMonth
-importedCount
-```
-
-しか含まれない。
-
-そのため、成功レスポンスだけから商品別評価額一覧をローカルCacheへ手動追加しない。
-
-登録後は参照APIを再取得することを基本とする。
-
----
-
-#### 31.27 VAL-001のCache無効化
-
-CSV-006成功後は、商品別月末評価額一覧が変更されている。
-
-対象Snapshotをフロント側で特定できる場合は、VAL-001のQuery Cacheを無効化する。
-
-概念的には、
-
-```ts
-await queryClient.invalidateQueries({
-  queryKey:
-    monthEndHoldingValueKeys.all,
-});
-```
-
-または、対象Snapshotが分かる場合はより限定したQuery Keyを無効化する。
-
----
-
-#### 31.28 snapshotIdがレスポンスにない場合
-
-CSV-006レスポンスには、
-
-```text
-snapshotId
-```
-
-を含めない。
-
-そのため、対象SnapshotのIDを画面コンテキストとして既に保持していない場合は、`targetYearMonth`に関連する月末資産状況Queryを無効化して再取得する。
-
-概念的には、
-
-```text
-CSV-006成功
-    ↓
-SNP系Query invalidate
-    ↓
-対象年月のSnapshot再取得
-    ↓
-VAL-001再取得
-```
-
-としてよい。
-
----
-
-#### 31.29 月末資産状況Cacheも無効化する
-
-CSV-006によって対象年月のsnapshotが新規作成される可能性がある。
-
-そのため、月末資産状況一覧などの関連Query Cacheも無効化する。
-
-例えば、
-
-```ts
-await queryClient.invalidateQueries({
-  queryKey:
-    monthEndAssetSnapshotKeys.all,
-});
-```
-
-とする。
-
----
-
-#### 31.30 資産推移系Cache
-
-CSV-006による登録結果が資産状況・資産推移表示に影響する場合は、対象となる参照Queryも無効化してよい。
-
-ただし、実際にどのQueryへ影響するかは各参照APIの仕様を正とする。
-
-不要な全Query無効化は避ける。
-
----
-
-#### 31.31 invalidateの基本方針
-
-Phase1では、成功レスポンスから複雑にCacheを手動更新するより、
-
-```text
-CSV-006成功
-    ↓
-関連Query invalidate
-    ↓
-サーバーから最新状態再取得
-```
-
-を基本とする。
-
----
-
-#### 31.32 CSV-005のPreview Cache
-
-CSV-005のプレビュー結果をTanStack QueryのCacheとして保持している場合は、CSV-006成功後にそのPreview状態を破棄または無効化する。
-
-登録後も
-
-```text
-canImport = true
-```
-
-の古いPreviewを表示し続けないようにする。
-
----
-
-#### 31.33 CSV-005後にCSV-006が409になる場合
-
-CSV-005で
-
-```text
-canImport = true
-```
-
-だったとしても、CSV-006で
-
-```http
-409 Conflict
-```
-
-となる場合がある。
-
-主に以下である。
+代表例：
 
 ```text
 MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
-
 MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
 ```
 
-これは、CSV-005後にサーバー状態が変化した正常な競合ケースとして扱う。
-
 ---
 
-#### 31.34 MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
+#### 29.21 CSV入力不正を422とする理由
 
-以下のエラーを受信した場合は、
+以下のような
+CSV入力自体の問題については、
 
-```text
-MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED
-```
+* CSV構造不正
+* 必須値不足
+* 対象年月形式不正
+* 複数対象年月
+* value形式不正
+* CSV内重複
+* 資産口座不存在
+* 保有商品不存在
+* 残高記録単位不一致
+* 対象年月時点で保有商品が無効
 
-例えば、
+HTTPリクエスト自体は
+受信できているが、
+業務処理可能な入力ではない。
 
-```text
-対象年月の月末資産状況が
-既に確定されているため、
-登録できません。
-```
-
-などを表示する。
-
-CSV-005のPreview結果を登録可能状態として表示し続けない。
-
----
-
-#### 31.35 MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-
-以下のエラーを受信した場合は、
+そのため、
 
 ```text
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-既に商品別月末評価額が登録されていることを利用者へ通知する。
-
-既存値をCSV値で上書きする確認画面などは表示しない。
-
-CSV-006には上書き機能がないためである。
-
----
-
-#### 31.36 409発生後の再取得
-
-競合エラーが発生した場合は、現在状態がプレビュー時点から変化している可能性が高い。
-
-そのため、必要に応じて
-
-```text
-関連Query invalidate
-+
-CSV-005再実行を促す
-```
-
-としてよい。
-
----
-
-#### 31.37 422エラー
-
-CSVファイルやCSV内容に問題がある場合は、
-
-```http
 422 Unprocessable Entity
 ```
 
 として扱う。
 
-主なエラーコードは、以下とする。
+---
+
+#### 29.22 UNIQUE制約を最終防衛線とする理由
+
+アプリケーション側で、
 
 ```text
-VALIDATION_ERROR
-INVALID_CSV_FORMAT
-CSV_DATA_REQUIRED
-MULTIPLE_TARGET_YEAR_MONTHS
-ASSET_ACCOUNT_NOT_FOUND
-BALANCE_RECORDING_UNIT_MISMATCH
-HOLDING_ASSET_NOT_FOUND
-HOLDING_ASSET_NOT_AVAILABLE
-INVALID_VALUE
-DUPLICATE_HOLDING_ASSET_IN_CSV
+既存商品別月末評価額なし
 ```
 
----
-
-#### 31.38 行単位エラー表示
-
-`error.details`にCSV行番号が含まれる場合は、利用者が修正箇所を確認できる形で表示する。
-
-概念的な型：
-
-```ts
-export type CsvImportErrorDetail = {
-  rowNumber?: number;
-  field?: string;
-  code?: string;
-  message: string;
-};
-```
-
----
-
-#### 31.39 複数エラー表示
-
-複数のCSVエラーが返却された場合は、最初の1件だけでなく可能な範囲で一覧表示する。
-
-概念例：
-
-```tsx
-<ul>
-  {error.details?.map(
-    (
-      detail,
-      index,
-    ) => (
-      <li
-        key={
-          `${detail.rowNumber ?? 'general'}-${index}`
-        }
-      >
-        {detail.message}
-      </li>
-    ),
-  )}
-</ul>
-```
-
----
-
-#### 31.40 rowNumber
-
-`rowNumber`は、CSVファイル上の修正箇所を示すために使用する。
-
-React側でDB上の行番号などとして扱わない。
-
----
-
-#### 31.41 field
-
-`field`が存在する場合は、例えば、
-
-```text
-target_year_month
-asset_account_name
-holding_asset_name
-value
-```
-
-に対応する表示名へ変換してよい。
-
-概念例：
-
-```ts
-const csvFieldLabels = {
-  target_year_month:
-    '対象年月',
-
-  asset_account_name:
-    '資産口座名',
-
-  holding_asset_name:
-    '保有商品名',
-
-  value:
-    '商品別月末評価額',
-} as const;
-```
-
----
-
-#### 31.42 error.codeで処理を分岐する
-
-フロントエンドでは、`error.message`ではなく、
-
-```text
-error.code
-```
-
-を基準としてエラー処理を分岐する。
-
-概念例：
-
-```ts
-switch (error.code) {
-  case 'MONTH_END_ASSET_SNAPSHOT_ALREADY_CONFIRMED':
-    // 確定済み
-    break;
-
-  case 'MONTH_END_HOLDING_VALUE_ALREADY_EXISTS':
-    // 既存評価額あり
-    break;
-
-  case 'INVALID_CSV_FORMAT':
-    // CSV形式不正
-    break;
-
-  default:
-    // 共通エラー
-    break;
-}
-```
-
----
-
-#### 31.43 USER_CONTEXT_REQUIRED
-
-```text
-USER_CONTEXT_REQUIRED
-```
-
-は、API共通の利用者コンテキストエラーとして扱う。
-
-CSV-006専用Componentに同じ処理を重複実装しない。
-
----
-
-#### 31.44 INVALID_USER_ID
-
-```text
-INVALID_USER_ID
-```
-
-も、利用者コンテキストに関する共通エラーとして扱う。
-
----
-
-#### 31.45 USER_NOT_FOUND
-
-```text
-USER_NOT_FOUND
-```
-
-の場合は、現在選択されている利用者が有効ではない状態として共通処理する。
-
----
-
-#### 31.46 INTERNAL_SERVER_ERROR
-
-```text
-INTERNAL_SERVER_ERROR
-```
-
-の場合は、共通サーバーエラーとして扱う。
-
-例えば、
-
-```text
-商品別月末評価額を
-登録できませんでした。
-時間をおいて再度お試しください。
-```
-
-などを表示する。
-
----
-
-#### 31.47 CSV-006は自動Retryしない
-
-CSV-006は非冪等なPOST APIであり、サーバー側で登録済みかどうかをクライアントが判断できないケースがある。
-
-そのため、TanStack QueryのMutationで自動Retryを原則として行わない。
-
-概念例：
-
-```ts
-useMutation({
-  mutationFn:
-    importMonthEndHoldingValueCsv,
-
-  retry: false,
-});
-```
-
----
-
-#### 31.48 通信失敗時に安易に再送しない
-
-CSV-006実行後に通信が切断された場合、
-
-```text
-サーバーでは登録成功
-+
-クライアントでは結果不明
-```
-
-となる可能性がある。
-
-この状態で自動的に同じCSVを再送しない。
-
----
-
-#### 31.49 通信結果不明時
-
-レスポンスを受け取れなかった場合は、必要に応じて
-
-```text
-商品別月末評価額一覧
-月末資産状況
-```
-
-を再取得し、現在状態を確認する導線を提供してよい。
-
-Phase1では`Idempotency-Key`を使用しないため、同一Mutationの自動再送で初回結果を再現する設計にはしない。
-
----
-
-#### 31.50 同じCSVを利用者が再送した場合
-
-利用者が手動で同じCSVを再登録した場合は、バックエンドから
-
-```text
-409 Conflict
-MONTH_END_HOLDING_VALUE_ALREADY_EXISTS
-```
-
-となる可能性がある。
-
-React側で同じFileかどうかを比較して登録成功扱いにしない。
-
----
-
-#### 31.51 フロントエンドで重複判定しない
-
-React側で、
-
-```text
-このCSVは以前登録した
-```
-
-という履歴管理を行ってCSV-006の重複判定を代替しない。
-
-正式な重複判定は、サーバー側の
+と判定した直後に、
+別リクエストが
+同じ評価額を登録する可能性がある。
+
+そのため、
+テーブル定義で一意性を保証する場合は、
 
 ```text
 month_end_asset_snapshot_id
@@ -11105,719 +7496,454 @@ month_end_asset_snapshot_id
 holding_asset_id
 ```
 
-に基づいて行う。
-
----
-
-#### 31.52 CSVファイル選択
-
-CSVファイル選択Componentでは、`accept`属性を設定してよい。
-
-概念例：
-
-```tsx
-<input
-  type="file"
-  accept=".csv,text/csv"
-  onChange={
-    handleFileChange
-  }
-/>
-```
-
-ただし、`accept`はブラウザUI上の補助であり、ファイル検証の保証ではない。
-
-最終検証はバックエンドで行う。
-
----
-
-#### 31.53 Fileのnull確認
-
-ファイル未選択状態では、CSV-005・CSV-006を実行しない。
-
-概念例：
-
-```ts
-if (
-  selectedFile === null
-) {
-  return;
-}
-```
-
-ただし、バックエンド側の`file`必須検証も維持する。
-
----
-
-#### 31.54 ファイルサイズのクライアント事前確認
-
-CSV共通仕様の最大ファイルサイズがフロントエンドでも共有されている場合は、送信前に簡易チェックを行ってよい。
-
-ただし、フロントエンドの検証だけを正式な制約にはしない。
-
-バックエンド側でも必ず検証する。
-
----
-
-#### 31.55 CSV内容をブラウザ側で正式検証しない
-
-React側でCSVを読み込んで、
-
-```text
-ヘッダー
-対象年月
-資産口座
-保有商品
-value
-```
-
-などをバックエンドと同等に正式検証する必要はない。
-
-登録可否の正は、CSV-005・CSV-006のバックエンド検証とする。
-
----
-
-#### 31.56 フロント側で簡易表示してもよい
-
-UX向上のため、選択したFileについて
-
-```text
-ファイル名
-ファイルサイズ
-```
-
-などを表示してよい。
-
-概念例：
-
-```tsx
-<p>
-  {selectedFile.name}
-</p>
-```
-
-ただし、CSV解析結果としてはCSV-005のレスポンスを正とする。
-
----
-
-#### 31.57 プレビュー結果と選択Fileを紐づける
-
-CSV-005実行後に利用者が別のCSVを選択した場合は、以前のPreview結果を破棄する。
+のUNIQUE制約を
+最終防衛線として使用する。
 
 概念的には、
 
 ```text
-File A選択
+アプリケーション
     ↓
-CSV-005 Preview A
+事前重複確認
+
++
+
+データベース
     ↓
-File B選択
+UNIQUE制約
+```
+
+の二重防御とする。
+
+フロントエンドの
+二重送信防止だけで
+データ整合性を保証しない。
+
+---
+
+#### 29.23 Idempotency-Keyを採用しない理由
+
+Phase1では、
+CSV登録の重複防止を、
+
+* アプリケーション側の重複確認
+* 登録直前の再確認
+* トランザクション
+* UNIQUE制約
+* フロントエンドの二重送信防止
+
+によって実現する。
+
+`Idempotency-Key`を導入すると、
+
+* Key保存
+* Keyの有効期限管理
+* 利用者との関連管理
+* リクエスト内容との関連管理
+* レスポンス再現
+* Key重複時の挙動
+
+などの追加設計が必要になる。
+
+そのため、
+Phase1では採用しない。
+
+---
+
+#### 29.24 通信エラー後に登録結果を断定できない理由
+
+Phase1では
+`Idempotency-Key`を採用しない。
+
+そのため、
+CSV-006送信後に
+通信が切断された場合、
+
+```text
+登録処理前に失敗した
+```
+
+のか、
+
+```text
+登録処理は成功したが
+レスポンスだけ受信できなかった
+```
+
+のかを、
+クライアント側から
+完全には判定できない。
+
+同じCSVを再送した場合、
+既に登録済みであれば
+重複エラーとなる可能性がある。
+
+必要に応じて、
+商品別月末評価額の
+参照APIから
+現在状態を再取得する。
+
+---
+
+#### 29.25 CSV-005とCSV-006で検証ロジックを共通化する理由
+
+CSV-005とCSV-006で
+同じ検証ルールを
+別々に実装すると、
+将来的に仕様差異が
+発生する可能性がある。
+
+例えば、
+
+```text
+CSV-005
     ↓
-Preview A破棄
+登録可能
+
+CSV-006
     ↓
-CSV-005 Preview B
+同じCSVなのに入力エラー
+```
+
+という状態は避ける。
+
+そのため、
+可能な限り、
+
+* CSV Definition
+* CSV Parser
+* CSV入力値Validator
+* 業務ルールValidator
+* Query
+
+を共通利用する。
+
+CSV-006固有の責務は、
+
+```text
+最新状態の再確認
+    ↓
+トランザクション
+    ↓
+必要に応じたsnapshot作成
+    ↓
+商品別月末評価額登録
 ```
 
 とする。
 
-File Bを選択しているのにFile Aの
+---
+
+#### 29.26 CSV行ごとにDB検索しない理由
+
+CSVには、
+複数の商品別月末評価額が
+含まれる可能性がある。
+
+各行について、
 
 ```text
-canImport = true
+asset_account検索
+    ↓
+holding_asset検索
+    ↓
+snapshot検索
+    ↓
+existing value検索
 ```
 
-を使って登録ボタンを活性化しない。
+を繰り返すと、
+CSV行数に応じて
+SQL発行回数が増加する。
+
+そのため、
+基本的には、
+
+```text
+CSV全体解析
+    ↓
+必要な資産口座名抽出
+    ↓
+asset_accounts一括取得
+    ↓
+必要な保有商品特定
+    ↓
+holding_assets一括取得
+    ↓
+snapshot取得
+    ↓
+existing values一括取得
+    ↓
+メモリ上で照合
+```
+
+とする。
 
 ---
 
-#### 31.58 CSV-006実行対象とPreview対象を一致させる
+#### 29.27 snapshot確定状態を登録時点で確認する理由
 
-登録時には、CSV-005で確認したFileと現在選択されているFileが同じ状態であることを画面状態管理上保証する。
-
-利用者がFileを変更した場合は、再プレビューを必須とするUIにしてよい。
-
----
-
-#### 31.59 プレビュー後のFile内容変更
-
-ブラウザの`File`オブジェクトは、選択時点のファイルを表す。
-
-利用者がローカルファイルを編集した場合にブラウザ内のFileが自動更新されるとは限らない。
-
-変更内容を登録したい場合は、再選択・再プレビューを行うUIとする。
-
----
-
-#### 31.60 確認画面
-
-CSV-005で取得したプレビュー内容を表示し、登録前に利用者が確認できるようにする。
+CSV-006で
+商品別月末評価額を登録する直前に、
+対象snapshotが
+別処理で確定される可能性がある。
 
 例えば、
 
 ```text
-対象年月
-資産口座名
-保有商品名
-商品別月末評価額
+CSV-006
+事前検証
+confirmed = false
+    ↓
+
+別処理
+SNP確定
+confirmed = true
+    ↓
+
+CSV-006
+INSERT
 ```
 
-を一覧表示してよい。
+となると、
+確定済みsnapshotへ
+新しい評価額が追加される可能性がある。
 
-CSV-006成功レスポンスには明細が含まれないため、登録前確認はCSV-005の責務とする。
-
----
-
-#### 31.61 登録確認ダイアログ
-
-必要に応じて、CSV-006実行前に
+そのため、
+登録時点で
+必要な排他制御または再確認を行い、
 
 ```text
-この内容で登録しますか？
+confirmed = false
 ```
 
-という確認ダイアログを表示してよい。
-
-ただし、バックエンドの再検証・競合検出は引き続き必要とする。
+であることを保証したうえで
+登録する。
 
 ---
 
-#### 31.62 登録中表示
+#### 29.28 既存評価額を登録直前にも保証する理由
 
-CSV-006は同期APIであるため、Mutation中は
+CSV-006の事前検証で
 
 ```text
-登録中...
+既存month_end_holding_valueなし
 ```
 
-などの状態を表示する。
-
-QueueやPolling前提の進捗UIはPhase1では不要とする。
-
----
-
-#### 31.63 進捗率を表示しない
-
-Phase1ではCSV-006を同期APIとして実装し、バックエンドから進捗情報を返さない。
+と確認した直後に、
+別リクエストによって
+同じ評価額が登録される可能性がある。
 
 そのため、
 
 ```text
-45%
-80%
+アプリケーション側重複確認
++
+登録時点の競合対策
++
+UNIQUE制約
 ```
 
-などの登録進捗率を疑似的に表示しない。
+によって
+重複登録を防止する。
 
-単純なLoading状態とする。
+事前SELECTだけに
+整合性保証を依存しない。
 
 ---
 
-#### 31.64 importedCountを利用した完了表示
+#### 29.29 CSV登録成功だけで月末資産全体が完成したと判断しない理由
 
-成功時には、
+CSV-006で登録されるのは、
+CSVに含まれる
+商品別月末評価額だけである。
+
+CSVに含まれていない、
+
+* 別の資産口座
+* 別の保有商品
+* 口座単位で管理する月末資産残高
+
+が存在する可能性がある。
+
+そのため、
 
 ```text
-result.importedCount
+CSV-006成功
+    ≠
+対象年月の月末資産入力完了
 ```
 
-を使用して、実際に登録された件数を表示する。
+とする。
 
-CSV行数をReact側で数えて登録件数として表示しない。
-
-ヘッダーや空行等の扱いとずれる可能性があるためである。
+月末資産全体の
+入力完了・確定可否については、
+月末資産状況側の責務とする。
 
 ---
 
-#### 31.65 targetYearMonthも成功レスポンスを正とする
+#### 29.30 CSVに含まれない保有商品を自動補完しない理由
 
-完了表示に使用する対象年月は、可能であれば
+対象年月時点で
+有効な保有商品が複数存在していても、
+CSVに含まれていない商品について
 
 ```text
-result.targetYearMonth
+value = 0
 ```
 
-を正とする。
-
-CSVプレビュー結果の値だけに依存しない。
-
----
-
-#### 31.66 Mutation Hookの責務
-
-Mutation Hookでは、主に以下を担当する。
-
-```text
-CSV-006実行
-Mutation状態管理
-成功時Cache無効化
-```
-
-画面固有のダイアログやレイアウトをHookへ持たせない。
-
----
-
-#### 31.67 onSuccess
-
-概念例：
-
-```ts
-export const useImportMonthEndHoldingValueCsv =
-  () => {
-    const queryClient =
-      useQueryClient();
-
-    return useMutation({
-      mutationFn:
-        ({
-          file,
-        }: ImportMonthEndHoldingValueCsvVariables) =>
-          importMonthEndHoldingValueCsv(
-            file,
-          ),
-
-      retry:
-        false,
-
-      onSuccess:
-        async () => {
-          await Promise.all([
-            queryClient.invalidateQueries({
-              queryKey:
-                monthEndAssetSnapshotKeys.all,
-            }),
-
-            queryClient.invalidateQueries({
-              queryKey:
-                monthEndHoldingValueKeys.all,
-            }),
-          ]);
-        },
-    });
-  };
-```
-
-実際のQuery Keyは、React共通設計を正とする。
-
----
-
-#### 31.68 onErrorでToastを固定しない
-
-共通Mutation Hookですべてのエラーを同一Toastへ変換すると、
-
-```text
-CSV行エラー
-409競合
-500エラー
-```
-
-の表示を分けにくくなる。
-
-エラーオブジェクトをPageまたはエラー表示Componentへ渡し、必要な表示分岐を行ってよい。
-
----
-
-#### 31.69 API Clientの責務
-
-API Clientでは、以下を担当する。
-
-```text
-FormData生成
-POST送信
-型付きレスポンス取得
-```
-
-以下は担当しない。
-
-- ファイル選択
-- Preview表示
-- 登録確認
-- Toast
-- 画面遷移
-- Query Cache無効化
-- CSV行エラー表示
-- 登録ボタン制御
-
----
-
-#### 31.70 Pageの責務
-
-商品別月末評価額CSV登録Pageでは、主に以下を担当する。
-
-- CSVファイル選択状態管理
-- CSV-005プレビュー実行
-- プレビュー結果表示
-- `canImport`による登録ボタン制御
-- CSV-006実行
-- 登録中表示
-- 登録成功表示
-- CSVエラー表示
-- 登録後の画面遷移
-
----
-
-#### 31.71 FileInput Componentの責務
-
-CSV FileInput Componentでは、主に以下を担当する。
-
-- CSVファイル選択
-- 選択ファイル名表示
-- ファイル変更通知
-
-以下は行わない。
-
-- CSV-005実行
-- CSV-006実行
-- 業務ルール判定
-- 資産口座確認
-- 保有商品確認
-
----
-
-#### 31.72 Preview Componentの責務
-
-CSV-005で取得したプレビュー結果を表示する。
-
-主に、
-
-- 対象年月
-- 資産口座名
-- 保有商品名
-- 商品別月末評価額
-- CSVエラー
-- `canImport`
-
-などを表示する。
-
-CSV-006の登録処理は行わない。
-
----
-
-#### 31.73 Import Button Component
-
-登録ボタンを独立Componentとする場合は、
-
-```ts
-type Props = {
-  disabled: boolean;
-  isPending: boolean;
-  onClick: () => void;
-};
-```
-
-など、表示・操作に必要な値だけを受け取る。
-
-API ClientをButton Componentから直接呼び出さない。
-
----
-
-#### 31.74 Error List Component
-
-CSV行単位のエラー表示が複雑になる場合は、専用Componentへ分離してよい。
-
-概念例：
-
-```tsx
-<CsvImportErrorList
-  details={
-    error.details
-  }
-/>
-```
-
----
-
-#### 31.75 エラー表示ではコードをそのまま見せない
+などを
+自動登録しない。
 
 例えば、
 
 ```text
-HOLDING_ASSET_NOT_FOUND
+証券口座
+
+全世界株式
+S&P500
+国内株式
 ```
 
-をそのまま利用者向け画面へ表示するのではなく、必要に応じて分かりやすい文言へ変換する。
+が存在し、
+CSVに
 
-ただし、デバッグ・開発環境でコードを補助表示する方針がある場合は、共通設計に従う。
+```text
+全世界株式
+S&P500
+```
+
+だけが含まれていても、
+
+```text
+国内株式
+value = 0
+```
+
+を自動生成しない。
+
+```text
+0円
+```
+
+と
+
+```text
+未登録
+```
+
+は、
+異なる状態として扱うためである。
 
 ---
 
-#### 31.76 CSV-005のエラーとCSV-006のエラーを区別する
+#### 29.31 口座単位残高を自動生成しない理由
 
-CSV-005では、業務エラーがあっても
+CSV-006は、
+商品単位で管理する資産口座の
+`month_end_holding_values`を
+登録するAPIである。
+
+商品別月末評価額の合計から、
 
 ```text
-200 OK
-canImport = false
+month_end_asset_balances.balance
 ```
 
-となる。
+を自動生成しない。
 
-CSV-006では、登録不可の場合は
-
-```text
-4xx Error
-```
-
-となる。
-
-React側で同じHTTP状態管理として扱わないよう注意する。
-
----
-
-#### 31.77 CSV-005のcanImport = false
-
-CSV-005で
+概念的には、
 
 ```text
-canImport = false
-```
-
-の場合は、CSV-006を実行しないUIとする。
-
-利用者には、プレビューで返却されたエラー内容を修正してCSVを再選択・再プレビューするよう促す。
-
----
-
-#### 31.78 CSV-005のcanImport = true後の409
-
-CSV-006で409になった場合は、
-
-```text
-CSVファイル自体の入力不正
-```
-
-とは限らない。
-
-プレビュー後に業務状態が変わった可能性があるため、
-
-```text
-最新状態が変更されたため、
-再度プレビューしてください。
-```
-
-などの導線を設けてよい。
-
----
-
-#### 31.79 422の場合はCSV修正を促す
-
-422の場合は、CSV内容またはCSVが参照している業務データが登録条件を満たしていない。
-
-可能であれば`error.details`を表示し、CSVの修正箇所を確認できるようにする。
-
----
-
-#### 31.80 ファイルをサーバー保存済みとみなさない
-
-CSV-005実行後も、サーバー側にCSVファイルが保持されているとは考えない。
-
-CSV-006実行時には必ずブラウザ側のFileを再送する。
-
----
-
-#### 31.81 ページ再読み込み
-
-CSVファイルは、通常のブラウザ状態ではページ再読み込み後に保持できない。
-
-そのため、ページ再読み込み後は、
-
-```text
-CSV再選択
+商品単位
     ↓
-CSV-005再実行
+month_end_holding_values.value
+```
+
+と、
+
+```text
+口座単位
     ↓
+month_end_asset_balances.balance
+```
+
+を
+別の記録方式として扱う。
+
+両者を
+同じ資産口座について
+重複して作成しない。
+
+---
+
+#### 29.32 フロントエンドで最終登録可否を再計算しない理由
+
+登録可否の判定には、
+
+* 最新のsnapshot確定状態
+* 最新の既存商品別月末評価額
+* 資産口座の状態
+* 残高記録単位
+* 保有商品の状態
+* 資産口座と保有商品の関連
+* 対象年月時点の有効性
+
+など、
+フロントエンドだけでは
+正確に保証できない情報が含まれる。
+
+そのため、
+React側では
+CSV-005の
+
+```text
+canImport
+```
+
+を
+登録ボタンなどの
+画面制御に利用してよいが、
+最終的な登録可否は
+CSV-006へ委ねる。
+
+```text
+React
+    ↓
+canImportによるUI制御
+
 CSV-006
-```
-
-を基本とする。
-
-FileをLocalStorage等へ保存しない。
-
----
-
-#### 31.82 FileをLocalStorageへ保存しない
-
-アップロードCSVをBase64等へ変換してLocalStorageへ永続保存しない。
-
-Phase1では、選択中のFileを画面メモリ上でのみ保持する。
-
----
-
-#### 31.83 CSV内容をログ出力しない
-
-フロントエンド側でも、
-
-```ts
-console.log(
-  file,
-);
-
-console.log(
-  preview.rows,
-);
-```
-
-などによって本番環境のConsoleへ資産情報を不要に出力しない。
-
----
-
-#### 31.84 エラーオブジェクトにも注意する
-
-HTTPクライアントのエラーオブジェクト全体を
-
-```ts
-console.error(
-  error,
-);
-```
-
-として本番環境へ常時出力すると、Request情報等が含まれる可能性がある。
-
-ログ方針は、React共通設計に従う。
-
----
-
-#### 31.85 概念的なディレクトリ構成
-
-例えば、以下のように整理できる。
-
-```text
-features/
-└── csv-imports/
-    ├── api/
-    │   ├── previewMonthEndHoldingValueCsv.ts
-    │   └── importMonthEndHoldingValueCsv.ts
-    ├── components/
-    │   ├── CsvFileInput.tsx
-    │   ├── MonthEndHoldingValueCsvPreview.tsx
-    │   ├── CsvImportErrorList.tsx
-    │   └── CsvImportButton.tsx
-    ├── hooks/
-    │   ├── usePreviewMonthEndHoldingValueCsv.ts
-    │   └── useImportMonthEndHoldingValueCsv.ts
-    ├── types/
-    │   └── monthEndHoldingValueCsv.ts
-    └── pages/
-        └── MonthEndHoldingValueCsvImportPage.tsx
-```
-
-正式なディレクトリ構成は、Reactアーキテクチャ設計に従う。
-
----
-
-#### 31.86 CSV-005と型を共通化する
-
-CSV-005とCSV-006で共通する概念については、型を共通化してよい。
-
-例えば、
-
-```text
-CSV行エラー
-対象年月
-CSVフィールド名
-```
-
-などである。
-
-一方、
-
-```text
-Preview Response
-Import Response
-```
-
-は責務が異なるため、別の型として定義する。
-
----
-
-#### 31.87 Import ResponseをPreview Responseから流用しない
-
-以下のように、CSV-005レスポンス型をCSV-006へそのまま流用しない。
-
-```ts
-type ImportResponse =
-  PreviewResponse;
-```
-
-CSV-006成功レスポンスは、
-
-```text
-targetYearMonth
-importedCount
-```
-
-に限定されているため、専用型を定義する。
-
----
-
-#### 31.88 CSV登録結果をView Modelへ変換してもよい
-
-Phase1では、APIレスポンスをそのまま完了表示へ使用してよい。
-
-将来的に表示要件が複雑になった場合は、
-
-```text
-Import Result
     ↓
-View Model
-    ↓
-Completion Component
+最新状態で最終判定
 ```
 
-へ分離してよい。
-
-現時点では不要な変換層を追加しない。
+とする。
 
 ---
 
-#### 31.89 フロントエンドで行わないこと
+#### 29.33 登録成功後に関連データを再取得する理由
 
-CSV-006のReact・TypeScript実装では、以下をフロントエンドの責務としない。
+CSV-006によって
+商品別月末評価額が
+新規登録されるため、
+フロントエンドが保持している
+商品別月末評価額のキャッシュは
+最新状態ではなくなる。
 
-- 利用者境界の最終保証
-- CSV仕様の最終検証
-- CSVヘッダーの最終検証
-- 資産口座存在確認
-- 残高記録単位判定
-- 保有商品存在確認
-- 資産口座と保有商品の関連保証
-- 対象年月時点の有効性判定
-- snapshot存在確認
-- snapshot作成
-- snapshot確定状態の最終判定
-- 既存商品別月末評価額の重複判定
-- トランザクション制御
-- ロック制御
-- UNIQUE制約による重複防止
-- importedCountの算出
-- CSV-005の`canImport`を登録保証として扱うこと
+そのため、
+登録成功後は必要に応じて、
+関連する参照Queryを
+invalidateし、
+サーバーから最新状態を取得する。
 
-フロントエンドは、
-
-```text
-CSV選択
-    ↓
-CSV-005でプレビュー
-    ↓
-利用者が内容確認
-    ↓
-同じFileをCSV-006へ送信
-    ↓
-Mutation状態管理
-    ↓
-成功・エラー表示
-    ↓
-関連Query再取得
-```
-
-という責務を基本とする。
+少なくとも、
+商品別月末評価額を表示する画面では、
+CSV登録成功後に
+最新データへ更新できるようにする。
 
 ---
 
-
-
----
-
-### 33 関連ドキュメント
+### 30 関連ドキュメント
 
 - [API一覧](../../api-list.md)
 - [API共通方針](../../api-common-policy.md)
