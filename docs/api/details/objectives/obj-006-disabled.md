@@ -1093,850 +1093,9 @@ Phase1では、冪等性キー（`Idempotency-Key`）を採用しない。
 
 ---
 
-## 26. テスト観点
+## 26. 設計上の補足
 
-### 26.1 正常系
-
-- 有効な目的について目的達成判定を実行できること
-- 判定成功時に `201 Created` が返却されること
-- 判定結果がレスポンスへ返却されること
-- 判定成功時に判定履歴が1件登録されること
-- 同一目的について複数回判定できること
-- 判定実行ごとに新しい判定履歴が登録されること
-
----
-
-### 26.2 利用者境界
-
-- 操作対象利用者に帰属する目的のみ判定できること
-- 他利用者の目的を判定できないこと
-- 他利用者の目的IDを指定した場合は `404 Not Found` となること
-- 他利用者の資産情報を判定計算へ含めないこと
-- 他利用者の手取り収入を平均値へ含めないこと
-- 他利用者の利用可能資産設定を参照しないこと
-
----
-
-### 26.3 目的
-
-- 存在する有効な目的を判定できること
-- 存在しない目的IDで `404 Not Found` となること
-- 論理削除済みの目的で `404 Not Found` となること
-- 無効化済みの目的で `422 Unprocessable Entity` となること
-- 目的ID形式不正で `400 Bad Request` となること
-- 実施予定年月が未設定でも判定できること
-- 実施予定年月が判定計算へ使用されないこと
-- 目的の必要支出額が判定計算へ使用されること
-
----
-
-### 26.4 月末資産状況
-
-- 判定に使用する確定済み月末資産状況を正しく取得できること
-- 未確定の月末資産状況を判定へ使用しないこと
-- 確定済み月末資産状況が存在しない場合は判定できないこと
-- 確定済み月末資産状況が存在しない場合は `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` となること
-- 判定に使用した月末資産状況を判定履歴から追跡できること
-
----
-
-### 26.5 利用可能資産
-
-- 判定対象年月時点の利用可能資産設定を使用すること
-- 現在の設定を過去の判定対象年月へ誤って適用しないこと
-- 利用可能資産へ含める設定の資産だけを合算すること
-- 利用可能資産へ含めない設定の資産を合算しないこと
-- 口座単位の月末資産残高を正しく合算すること
-- 商品単位の月末評価額を正しく合算すること
-- 同じ資産を口座単位と商品単位で二重計上しないこと
-- 利用可能資産設定を特定できない場合は判定できないこと
-- 利用可能資産を算出できない場合は `AVAILABLE_ASSETS_CALCULATION_NOT_AVAILABLE` となること
-
----
-
-### 26.6 平均手取り収入
-
-- 判定対象年月より前の連続する3か月を使用すること
-- 判定対象年月自身の手取り収入を含めないこと
-- 3か月分の手取り収入から平均値を算出できること
-- 金額が `0円` の月も平均値へ含めること
-- レコードが存在しない月は `0円` として補完しないこと
-- 1か月不足する場合は判定できないこと
-- 2か月不足する場合は判定できないこと
-- 3か月すべて不足する場合は判定できないこと
-- データ不足時は `NET_INCOME_DATA_INSUFFICIENT` となること
-- 平均値の端数処理が確定した業務ルールどおりであること
-
----
-
-### 26.7 翌月クレジットカード支払予定額
-
-- 正常な整数値を指定して判定できること
-- `0円` を指定して判定できること
-- 負数で `422 Unprocessable Entity` となること
-- 小数で `422 Unprocessable Entity` となること
-- 最大許容値を超えた場合は `422 Unprocessable Entity` となること
-- 入力値が判定計算へ正しく反映されること
-- 入力値が判定履歴へ保存されること
-
----
-
-### 26.8 判定計算
-
-- 定義した計算式どおりに判定されること
-- 利用可能資産が必要支出額および必要な控除額を上回る場合の結果が正しいこと
-- 利用可能資産が必要額と等しい境界値で結果が正しいこと
-- 利用可能資産が必要額を下回る場合の結果が正しいこと
-- 計算途中の端数処理が業務ルールどおりであること
-- 金額計算で浮動小数点数を使用しないこと
-- 判定結果と計算根拠に矛盾がないこと
-
-具体的な計算式および境界値は、機能要件と `assessment_histories` のテーブル定義に従ってテストケースへ落とし込む。
-
----
-
-### 26.9 判定履歴
-
-- 判定成功時のみ履歴が登録されること
-- 判定不可時は履歴が登録されないこと
-- バリデーションエラー時は履歴が登録されないこと
-- システムエラー時は履歴が登録されないこと
-- 判定対象となった目的IDが保存されること
-- 判定時点の目的名が保存されること
-- 判定時点の必要支出額が保存されること
-- 判定時点の利用可能資産が保存されること
-- 判定時点の平均手取り収入が保存されること
-- 翌月クレジットカード支払予定額が保存されること
-- 計算根拠および判定結果が保存されること
-- 判定日時が保存されること
-
-保存項目の具体的な名称は、`assessment_histories` のテーブル定義に合わせる。
-
----
-
-### 26.10 履歴の不変性
-
-- 判定後に目的名を変更しても保存済み履歴が変更されないこと
-- 判定後に必要支出額を変更しても保存済み履歴が変更されないこと
-- 判定後に目的を無効化しても保存済み履歴が変更されないこと
-- 判定後に手取り収入を変更しても保存済み履歴が変更されないこと
-- 判定後に月末資産情報を変更しても保存済み履歴が変更されないこと
-- 判定後に利用可能資産設定を変更しても保存済み履歴が変更されないこと
-
----
-
-### 26.11 トランザクション
-
-- 判定計算と判定履歴登録が同一トランザクションで実行されること
-- 履歴登録中に例外が発生した場合はロールバックされること
-- 判定履歴の一部だけが保存されないこと
-- 判定に失敗した場合は履歴が保存されないこと
-- 判定成功レスポンス返却前に履歴登録が完了していること
-
----
-
-### 26.12 同時実行
-
-- 同一目的へ同時に判定を実行してもデータ整合性が維持されること
-- 同時実行した判定ごとに独立した履歴が登録されること
-- 判定処理中に目的が無効化された場合の挙動が一貫していること
-- 判定処理中に基礎データが更新された場合でも、1回の判定内で計算根拠に矛盾が生じないこと
-- デッドロックなどのデータベース例外が共通エラーへ変換されること
-
-Phase1で厳密なスナップショット分離を保証しない場合は、その制約を設計上の補足へ明記する。
-
----
-
-### 26.13 二重送信
-
-- 判定ボタンを二重送信できないよう画面制御されること
-- 同一リクエストを再実行すると新しい判定履歴が登録されること
-- 同一条件の判定履歴が複数存在しても整合性が崩れないこと
-- Phase1では `Idempotency-Key` を要求しないこと
-
----
-
-### 26.14 レスポンス契約
-
-- JSONフィールド名がcamelCaseであること
-- IDがAPI共通方針に従って文字列で返却されること
-- 対象年月が `YYYY-MM` 形式で返却されること
-- 金額項目が整数で返却されること
-- 判定結果が定義済みの値で返却されること
-- 判定に使用した入力値と計算根拠が返却されること
-- `userId` がレスポンスへ含まれないこと
-- DB内部のカラム名がそのまま公開されないこと
-- `data` オブジェクトで返却されること
-
----
-
-### 26.15 エラー時の履歴
-
-- `OBJECTIVE_NOT_FOUND` 時に履歴が登録されないこと
-- `OBJECTIVE_DISABLED` 時に履歴が登録されないこと
-- `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` 時に履歴が登録されないこと
-- `NET_INCOME_DATA_INSUFFICIENT` 時に履歴が登録されないこと
-- `AVAILABLE_ASSETS_CALCULATION_NOT_AVAILABLE` 時に履歴が登録されないこと
-- `ASSESSMENT_NOT_AVAILABLE` 時に履歴が登録されないこと
-- `VALIDATION_ERROR` 時に履歴が登録されないこと
-- `INTERNAL_SERVER_ERROR` 時に不完全な履歴が残らないこと
-
----
-
-### 26.16 異常系
-
-- 想定外の例外で `500 Internal Server Error` となること
-- 共通エラーレスポンス形式で返却されること
-- エラーレスポンスとログに同じリクエストIDが記録されること
-- SQLやスタックトレースなどの内部情報がレスポンスへ含まれないこと
-- エラーログへ不要な金額情報やメモが出力されないこと
-
----
-
-## 27. Laravel実装方針
-
-### 27.1 Action
-
-HTTPリクエストを受け付け、目的ID、判定対象年月、翌月クレジットカード支払予定額および利用者コンテキストを取得する。
-
-Form Requestまたは入力用DTOから検証済みの入力値を受け取り、目的達成判定UseCaseを呼び出す。
-
-UseCaseから受け取った判定結果を、Responderへ渡す。
-
-以下の処理は、Actionへ直接記述しない。
-
-- 入力値の単項目バリデーション
-- 利用者境界の判定
-- 判定対象データの取得
-- 判定計算
-- 判定履歴登録
-- トランザクション制御
-- レスポンス生成処理
-
----
-
-### 27.2 UseCase
-
-目的達成判定のユースケース処理を担当する。
-
-主な処理は、以下とする。
-
-- 操作対象利用者を受け取る
-- 判定対象となる目的を取得する
-- 確定済み月末資産状況を取得する
-- 判定対象年月時点の利用可能資産設定を取得する
-- 利用可能資産を算出する
-- 平均手取り収入を算出する
-- 判定計算を実行する
-- 判定履歴を登録する
-- 判定結果を返却する
-
-判定条件を満たさない場合は、業務エラーとして扱う。
-
-判定履歴は、判定成功時のみ登録する。
-
----
-
-### 27.3 Form Request / DTO
-
-入力値の形式および単項目バリデーションを担当する。
-
-主な検証対象は、以下とする。
-
-- `targetYearMonth`
-- `nextMonthCreditCardPayment`
-
-Form Requestでは、以下を検証する。
-
-- 必須項目
-- データ型
-- NULL可否
-- `YYYY-MM` 形式
-- 数値範囲
-- 未定義項目
-
-データベース状態に依存する以下の業務ルールは、UseCaseで実施する。
-
-- 目的の存在確認
-- 利用者境界確認
-- 利用状態確認
-- 確定済み月末資産状況の存在確認
-- 平均手取り収入算出可否
-- 利用可能資産算出可否
-
-DTO例：
-
-```php
-final readonly class AssessObjectiveInput
-{
-    public function __construct(
-        public string $targetYearMonth,
-        public int $nextMonthCreditCardPayment,
-    ) {
-    }
-}
-```
-
----
-
-### 27.4 Query
-
-判定対象データ取得を担当する。
-
-取得対象は、以下とする。
-
-- `objectives`
-- `month_end_asset_snapshots`
-- `month_end_asset_balances`
-- `month_end_holding_values`
-- `asset_account_available_settings`
-- `asset_accounts`
-- `holding_assets`
-- `net_incomes`
-
-目的取得時は、必ず利用者境界を条件へ含める。
-
-```php
-$objective = Objective::query()
-    ->where('id', $objectiveId)
-    ->where('user_id', $userId)
-    ->first();
-```
-
-論理削除済み目的は、取得対象としない。
-
-無効化された目的は取得後、`OBJECTIVE_DISABLED` として扱う。
-
----
-
-### 27.5 Repository
-
-判定履歴登録のみ担当する。
-
-Repositoryでは、`assessment_histories` への登録を実施する。
-
-保存対象は、以下とする。
-
-- `objective_id`
-- 判定対象年月
-- 判定時点の目的情報
-- 利用可能資産
-- 平均手取り収入
-- 翌月クレジットカード支払予定額
-- 判定結果
-- 判定根拠
-
-目的、月末資産情報、手取り収入および利用可能資産設定は更新しない。
-
----
-
-### 27.6 判定サービス
-
-判定計算は、UseCaseへ直接記述せず、専用ドメインサービスへ委譲する。
-
-例：
-
-```php
-$result = $assessmentService->assess(
-    objective: $objective,
-    availableAssets: $availableAssets,
-    averageNetIncome: $averageNetIncome,
-    nextMonthCreditCardPayment: $input->nextMonthCreditCardPayment,
-);
-```
-
-判定ロジックは、Controller、Repository、Queryへ記述しない。
-
----
-
-### 27.7 トランザクション
-
-以下の処理を、1つのデータベーストランザクション内で実行する。
-
-- 判定対象取得
-- 判定計算
-- 判定履歴登録
-
-実装例：
-
-```php
-$result = DB::transaction(
-    function () use (
-        $userId,
-        $objectiveId,
-        $input,
-    ) {
-        $result =
-            $this->useCase->execute(
-                $userId,
-                $objectiveId,
-                $input,
-            );
-
-        return $result;
-    },
-);
-```
-
-判定途中で例外が発生した場合は、判定履歴を登録しない。
-
----
-
-### 27.8 Responder
-
-UseCaseから受け取った判定結果を、API共通方針に従ったHTTPレスポンスへ変換する。
-
-正常終了時は、以下のHTTPステータスで返却する。
-
-```text
-201 Created
-```
-
-判定履歴が登録されたことを、レスポンスから判別できる。
-
-Responderは、以下を行わない。
-
-- 判定計算
-- 判定履歴登録
-- データ取得
-- 業務ルール判定
-
----
-
-### 27.9 API Resource
-
-判定結果を、APIレスポンス形式へ変換する。
-
-Resourceでは、フィールド名をcamelCaseへ変換する。
-
-内部DBカラムは公開しない。
-
-例：
-
-```php
-return [
-    'assessmentResult' => $this->assessment_result,
-    'availableAssets' => $this->available_assets,
-    'requiredExpense' => $this->required_expense,
-    'averageNetIncome' => $this->average_net_income,
-    'remainingAmount' => $this->remaining_amount,
-];
-```
-
----
-
-### 27.10 Middleware
-
-以下の共通ミドルウェアを適用する。
-
-- 利用者コンテキスト設定
-- リクエストID生成
-- JSON共通処理
-- 共通例外処理
-- ログコンテキスト設定
-
----
-
-### 27.11 例外変換
-
-LaravelおよびPostgreSQLの内部例外は、そのままAPIレスポンスへ公開しない。
-
-主な例外変換は、以下とする。
-
-| 内部状態 | 独自エラーコード |
-|---|---|
-| 利用者未指定 | `USER_CONTEXT_REQUIRED` |
-| 利用者ID形式不正 | `INVALID_USER_ID` |
-| 利用者不存在 | `USER_NOT_FOUND` |
-| 目的ID形式不正 | `INVALID_OBJECTIVE_ID` |
-| 目的不存在 | `OBJECTIVE_NOT_FOUND` |
-| 無効化済み目的 | `OBJECTIVE_DISABLED` |
-| 確定済み月末資産状況不存在 | `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` |
-| 平均手取り収入不足 | `NET_INCOME_DATA_INSUFFICIENT` |
-| 利用可能資産算出不可 | `AVAILABLE_ASSETS_CALCULATION_NOT_AVAILABLE` |
-| 判定不可 | `ASSESSMENT_NOT_AVAILABLE` |
-| 入力値不正 | `VALIDATION_ERROR` |
-| 想定外例外 | `INTERNAL_SERVER_ERROR` |
-
-SQL、スタックトレースおよび内部例外メッセージは、APIレスポンスへ含めない。
-
-ログには、調査に必要な範囲で以下を記録する。
-
-- 利用者ID
-- 目的ID
-- 判定対象年月
-- リクエストID
-- 独自エラーコード
-
-判定に利用した金額内訳や計算途中の情報は、通常ログへ出力しない。
-
-
-## 28. React・TypeScriptでの利用
-
-リクエスト型は、
-以下とする。
-
-```ts
-export type AssessObjectiveRequest = {
-  targetYearMonth: string;
-  nextMonthCreditCardPayment: number;
-};
-```
-
-判定結果の型は、
-以下とする。
-
-```ts
-export type ObjectiveAssessmentResult = {
-  assessmentResult: string;
-  availableAssets: number;
-  requiredExpense: number;
-  averageNetIncome: number;
-  remainingAmount: number;
-};
-```
-
-レスポンス型は、
-以下とする。
-
-```ts
-export type AssessObjectiveResponse = {
-  data: ObjectiveAssessmentResult;
-};
-```
-
-API呼び出し例は、
-以下とする。
-
-```ts
-const response =
-  await apiClient.post<AssessObjectiveResponse>(
-    `/api/v1/objectives/${objectiveId}/assessments`,
-    {
-      targetYearMonth: '2026-08',
-      nextMonthCreditCardPayment: 120000,
-    },
-  );
-```
-
-取得した判定結果は、
-以下の表示に利用する。
-
-- 目的達成判定結果
-- 判定に使用した利用可能資産
-- 判定時点の必要支出額
-- 判定に使用した平均手取り収入
-- 判定後の残額
-
----
-
-### 26.1 targetYearMonthの扱い
-
-`targetYearMonth`は、
-判定の基準となる対象年月を
-`YYYY-MM`形式で送信する。
-
-```ts
-const targetYearMonth = '2026-08';
-```
-
-対象年月は、
-日付ではなく年月を表す業務値として扱う。
-
-JavaScriptの`Date`オブジェクトへ
-不必要に変換せず、
-原則として文字列で保持する。
-
----
-
-### 28.2 nextMonthCreditCardPaymentの扱い
-
-`nextMonthCreditCardPayment`は、
-翌月クレジットカード支払予定額を
-日本円の整数値で指定する。
-
-```ts
-const nextMonthCreditCardPayment = 120000;
-```
-
-支払予定額がない場合は、
-`0`を送信する。
-
-```ts
-const request: AssessObjectiveRequest = {
-  targetYearMonth: '2026-08',
-  nextMonthCreditCardPayment: 0,
-};
-```
-
-`0`は有効な入力値であり、
-未入力として扱ってはならない。
-
-例えば、
-以下の判定は行わない。
-
-```ts
-if (!request.nextMonthCreditCardPayment) {
-  // 0円まで未入力として扱われるため使用しない
-}
-```
-
-未入力判定は、
-`undefined`などと明示的に比較する。
-
----
-
-### 28.3 averageNetIncomeの扱い
-
-`averageNetIncome`は、
-バックエンドが判定対象年月より前の
-連続する3か月の手取り収入から算出する。
-
-フロントエンドから
-平均手取り収入を送信しない。
-
-また、
-フロントエンドで独自に再計算せず、
-APIから返却された値を
-判定根拠として表示する。
-
-これにより、
-フロントエンドとバックエンドで
-平均値や端数処理が異なることを防止する。
-
----
-
-### 28.4 availableAssetsの扱い
-
-`availableAssets`は、
-判定対象年月時点の
-利用可能資産設定および
-確定済み月末資産状況から
-バックエンドが算出する。
-
-フロントエンドから
-利用可能資産額を送信しない。
-
-取得した値は、
-判定結果の根拠として表示する。
-
-```ts
-const formattedAvailableAssets =
-  new Intl.NumberFormat('ja-JP', {
-    style: 'currency',
-    currency: 'JPY',
-    maximumFractionDigits: 0,
-  }).format(response.data.availableAssets);
-```
-
----
-
-### 28.5 assessmentResultの扱い
-
-`assessmentResult`は、
-API仕様で定義した判定結果の値として扱う。
-
-フロントエンドでは、
-文字列を直接画面へ表示するのではなく、
-定義済みの値に応じて表示内容を切り替える。
-
-例：
-
-```ts
-export type AssessmentResult =
-  | 'achievable'
-  | 'notAchievable';
-```
-
-```ts
-const assessmentResultLabels: Record<
-  AssessmentResult,
-  string
-> = {
-  achievable: '達成可能',
-  notAchievable: '達成困難',
-};
-```
-
-実際に使用する値は、
-OBJ-006のレスポンス項目および
-`assessment_histories`の定義と一致させる。
-
-未定義の値を受信した場合は、
-正常な判定結果として扱わず、
-共通エラー表示または
-フォールバック表示を行う。
-
----
-
-### 28.6 remainingAmountの扱い
-
-`remainingAmount`は、
-判定計算後に残る金額を表す。
-
-日本円の整数値として扱い、
-フロントエンドで再計算しない。
-
-負数を許容する設計の場合は、
-マイナス値もそのまま表示する。
-
-```ts
-const formattedRemainingAmount =
-  new Intl.NumberFormat('ja-JP', {
-    style: 'currency',
-    currency: 'JPY',
-    maximumFractionDigits: 0,
-  }).format(response.data.remainingAmount);
-```
-
-`remainingAmount`の正式名称および計算式は、
-機能要件、
-ユビキタス言語および
-`assessment_histories`の定義と統一する。
-
----
-
-### 28.7 判定実行前の画面制御
-
-判定実行前に、
-以下を確認できるようにする。
-
-- 判定対象となる目的
-- 判定対象年月
-- 必要支出額
-- 翌月クレジットカード支払予定額
-
-無効化された目的では、
-判定実行ボタンを非表示または非活性にする。
-
-ただし、
-フロントエンドの状態だけを信頼せず、
-OBJ-006でも目的の利用状態を再検証する。
-
----
-
-### 28.8 判定実行中の画面制御
-
-判定処理中は、
-実行ボタンを非活性にする。
-
-判定が完了するまで、
-同じリクエストを再送信できないようにする。
-
-```ts
-const [isAssessing, setIsAssessing] =
-  useState(false);
-```
-
-```ts
-if (isAssessing) {
-  return;
-}
-```
-
-本APIは判定成功ごとに
-新しい判定履歴を登録するため、
-二重送信によって
-同じ内容の履歴が複数作成される可能性がある。
-
----
-
-### 28.9 判定成功時の扱い
-
-判定成功時は、
-APIから返却された結果を使用して
-判定結果画面を表示する。
-
-判定結果をフロントエンドで再構築せず、
-レスポンスを表示用データとして使用する。
-
-必要に応じて、
-以下の画面へ遷移できるようにする。
-
-- 判定結果画面
-- 判定履歴一覧画面
-- 目的詳細画面
-
-判定成功時には、
-判定履歴も登録済みである。
-
----
-
-### 28.10 判定不可時の扱い
-
-判定条件を満たさない場合は、
-システムエラーとして扱わず、
-判定を実行できない業務状態として表示する。
-
-エラーコードごとの基本的な扱いは、
-以下とする。
-
-| エラーコード | フロントエンドの扱い |
-|---|---|
-| `OBJECTIVE_DISABLED` | 無効化された目的は判定できないことを表示する |
-| `CONFIRMED_ASSET_SNAPSHOT_NOT_FOUND` | 月末資産状況の登録・確定を案内する |
-| `NET_INCOME_DATA_INSUFFICIENT` | 必要な3か月分の手取り収入登録を案内する |
-| `AVAILABLE_ASSETS_CALCULATION_NOT_AVAILABLE` | 利用可能資産設定の確認を案内する |
-| `ASSESSMENT_NOT_AVAILABLE` | 判定条件を満たしていないことを表示する |
-| `VALIDATION_ERROR` | 入力項目ごとにエラーを表示する |
-| `OBJECTIVE_NOT_FOUND` | 目的一覧画面へ戻す |
-| `INTERNAL_SERVER_ERROR` | 共通エラー表示を行う |
-
-判定不可の場合は、
-判定結果画面へ遷移しない。
-
----
-
-### 28.11 バリデーションエラーの表示
-
-バリデーションエラーでは、
-`error.details.field`を利用して
-対象項目へエラーメッセージを表示する。
-
-想定するフィールドは、
-以下とする。
-
-- `targetYearMonth`
-- `nextMonthCreditCardPayment`
-
-```ts
-if (
-  detail.field ===
-  'nextMonthCreditCardPayment'
-) {
-  setFieldError(
-    'nextMonthCreditCardPayment',
-    detail.message,
-  );
-}
-```
-
----
-
-### 28.12 金額表示
-
-以下の金額項目は、
-すべて日本円の整数値として扱う。
-
-- `availableAssets`
-- `requiredExpense`
-- `averageNetIncome`
-- `nextMonthCreditCardPayment`
-- `remainingAmount`
-
-画面表示時は、
-`Intl.NumberFormat`を使用して
-桁区切りを行う。
-
-フロントエンドで
-独自の端数処理や
-小数計算を行わない。
-
----
-
-## 29. 設計上の補足
-
-### 29.1 POSTを採用する理由
+### 26.1 POSTを採用する理由
 
 本APIは、
 判定結果を返却するだけでなく、
@@ -1952,7 +1111,7 @@ POST /api/v1/objectives/{objectiveId}/assessments
 
 ---
 
-### 29.2 assessmentsをサブリソースとする理由
+### 26.2 assessmentsをサブリソースとする理由
 
 判定履歴は、
 特定の目的に対して作成される。
@@ -1970,7 +1129,7 @@ POST /api/v1/objectives/{objectiveId}/assessments
 
 ---
 
-### 29.3 判定入力をクライアントへ限定しない理由
+### 26.3 判定入力をクライアントへ限定しない理由
 
 クライアントから受け付ける変動値は、
 判定対象年月および
@@ -1993,7 +1152,7 @@ POST /api/v1/objectives/{objectiveId}/assessments
 
 ---
 
-### 29.4 確定済み月末資産状況のみ使用する理由
+### 26.4 確定済み月末資産状況のみ使用する理由
 
 未確定データは、
 入力途中または修正途中である可能性がある。
@@ -2006,7 +1165,7 @@ POST /api/v1/objectives/{objectiveId}/assessments
 
 ---
 
-### 29.5 判定対象年月時点の設定を使用する理由
+### 26.5 判定対象年月時点の設定を使用する理由
 
 利用可能資産へ含めるかどうかは、
 対象年月によって異なる可能性がある。
@@ -2020,7 +1179,7 @@ POST /api/v1/objectives/{objectiveId}/assessments
 
 ---
 
-### 29.6 平均手取り収入を再計算する理由
+### 26.6 平均手取り収入を再計算する理由
 
 INC-005で表示した平均手取り収入を、
 クライアントから判定APIへ渡さない。
@@ -2038,7 +1197,7 @@ INC-005で表示した平均手取り収入を、
 
 ---
 
-### 29.7 判定不可時に履歴を保存しない理由
+### 26.7 判定不可時に履歴を保存しない理由
 
 判定に必要な情報が不足している場合は、
 正式な判定結果を確定できない。
@@ -2052,7 +1211,7 @@ INC-005で表示した平均手取り収入を、
 
 ---
 
-### 29.8 判定履歴をスナップショットとして保存する理由
+### 26.8 判定履歴をスナップショットとして保存する理由
 
 判定履歴は、
 判定実行時点の入力値、
@@ -2075,7 +1234,7 @@ INC-005で表示した平均手取り収入を、
 
 ---
 
-### 29.9 201 Createdを返却する理由
+### 26.9 201 Createdを返却する理由
 
 本APIの正常終了時には、
 新しい判定履歴が作成される。
@@ -2090,7 +1249,7 @@ INC-005で表示した平均手取り収入を、
 
 ---
 
-### 29.10 同一条件で複数回判定できる理由
+### 26.10 同一条件で複数回判定できる理由
 
 利用者は、
 同じ目的および同じ条件で
@@ -2103,7 +1262,7 @@ INC-005で表示した平均手取り収入を、
 
 ---
 
-### 29.11 冪等性キーを採用しない理由
+### 26.11 冪等性キーを採用しない理由
 
 Phase1では、
 個人利用を前提とし、
@@ -2122,7 +1281,7 @@ Phase1では
 
 ---
 
-### 29.12 フロントエンドで判定計算を行わない理由
+### 26.12 フロントエンドで判定計算を行わない理由
 
 目的達成判定は、
 業務ルールとして
@@ -2138,7 +1297,7 @@ Reactでは判定結果を表示するだけとし、
 
 ---
 
-### 29.13 実施予定年月を判定に使用しない理由
+### 26.13 実施予定年月を判定に使用しない理由
 
 実施予定年月は、
 Phase1では目的を管理・表示するための項目である。
@@ -2151,7 +1310,7 @@ Phase1では目的を管理・表示するための項目である。
 
 ---
 
-### 29.14 キャッシュを採用しない理由
+### 26.14 キャッシュを採用しない理由
 
 判定結果は、
 手取り収入、
@@ -2168,7 +1327,7 @@ Phase1では判定頻度も高くないため、
 
 ---
 
-### 29.15 同時更新に対する制約
+### 26.15 同時更新に対する制約
 
 Phase1では、
 判定中に基礎データが更新される可能性を
@@ -2185,7 +1344,7 @@ Phase1では、
 
 ---
 
-## 30. 関連ドキュメント
+## 27. 関連ドキュメント
 
 - [API共通方針](../../api-common-policy.md)
 - [API一覧](../../api-list.md)
