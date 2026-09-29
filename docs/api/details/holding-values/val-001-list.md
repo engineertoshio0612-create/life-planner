@@ -3151,2445 +3151,9 @@ Idempotency-Key
 
 ---
 
-## 23. Laravel実装方針
+## 23. 設計上の補足
 
-VAL-001では、Action、Query、DTO、API Resource、Responderを分離して実装する。
-
-参照専用APIであるため、Repositoryは使用しない。
-
-概念的な構成は、以下とする。
-
-```text
-Route
-    ↓
-Middleware
-    ↓
-Action
-    ↓
-UseCase
-    ├─ MonthEndAssetSnapshotQuery
-    └─ MonthEndHoldingValueQuery
-    ↓
-List Result DTO
-    ↓
-API Resource Collection
-    ↓
-Responder
-```
-
-VAL-001はGETによる参照処理であり、
-
-```text
-INSERT
-UPDATE
-DELETE
-```
-
-を行わない。
-
-### 23.1 Route
-
-VAL-001は、以下のルートとして定義する。
-
-概念例：
-
-```php
-Route::get(
-    '/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values',
-    ListMonthEndHoldingValuesAction::class,
-);
-```
-
-`snapshotId`は、正の整数形式だけを許可する。
-
-概念例：
-
-```php
-Route::get(
-    '/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values',
-    ListMonthEndHoldingValuesAction::class,
-)
-    ->where(
-        'snapshotId',
-        '[1-9][0-9]*',
-    );
-```
-
-### 23.2 Middleware
-
-以下の共通Middlewareを適用する。
-
-- 利用者コンテキスト設定
-- リクエストID生成
-- 共通例外処理
-- ログコンテキスト設定
-
-利用者コンテキスト設定Middlewareでは、`X-User-Id`を検証する。
-
-概念的には、
-
-```text
-X-User-Id取得
-    ↓
-必須確認
-    ↓
-形式確認
-    ↓
-users存在確認
-    ↓
-UserContext設定
-    ↓
-Action
-```
-
-とする。
-
-Action以降では、検証済みの利用者コンテキストを使用する。
-
-### 23.3 FormRequest
-
-VAL-001では、
-
-```text
-Request Bodyなし
-クエリパラメータなし
-```
-
-であるため、専用FormRequestは原則として作成しない。
-
-以下のような空FormRequestを形式的に作成しない。
-
-```php
-final class ListMonthEndHoldingValuesRequest
-    extends FormRequest
-{
-}
-```
-
-`snapshotId`の形式検証は、RouteまたはAPI共通のパスパラメータ検証方式で行う。
-
-### 23.4 snapshotIdの形式検証
-
-`snapshotId`は、正の整数形式を必須とする。
-
-正常例：
-
-```text
-1
-20
-999
-```
-
-不正例：
-
-```text
-0
--1
-abc
-1.5
-1e3
-20abc
-```
-
-形式不正は、
-
-```text
-INVALID_SNAPSHOT_ID
-```
-
-へ変換する。
-
-### 23.5 Action
-
-Actionは、`snapshotId`と利用者コンテキストを受け取り、UseCaseを呼び出す。
-
-概念例：
-
-```php
-final class ListMonthEndHoldingValuesAction
-{
-    public function __invoke(
-        string $snapshotId,
-        ListMonthEndHoldingValuesUseCase $useCase,
-        ListMonthEndHoldingValuesResponder $responder,
-        UserContext $userContext,
-    ): JsonResponse {
-        $result =
-            $useCase->execute(
-                userId:
-                    $userContext->userId,
-
-                snapshotId:
-                    (int) $snapshotId,
-            );
-
-        return $responder->ok(
-            $result,
-        );
-    }
-}
-```
-
-### 23.6 Actionで行わないこと
-
-Actionでは、以下を行わない。
-
-- 月末資産状況検索
-- 利用者境界判定
-- 商品別月末評価額検索
-- 保有商品検索
-- 並び順制御
-- JOIN条件組み立て
-- DTO変換
-- レスポンス配列生成
-- DB更新
-
-Actionは、
-
-```text
-HTTP入力
-    ↓
-UseCase
-    ↓
-Responder
-```
-
-の橋渡しに責務を限定する。
-
-### 23.7 UseCase
-
-VAL-001のアプリケーション処理全体を担当する。
-
-主な処理は、以下とする。
-
-- 操作対象利用者IDを受け取る
-- `snapshotId`を受け取る
-- 対象月末資産状況を取得する
-- 対象不存在の場合は業務例外を送出する
-- 商品別月末評価額一覧を取得する
-- 保有商品情報を組み合わせる
-- 固定の並び順を適用する
-- List Result DTOへ変換する
-- Result DTO一覧を返却する
-
-### 23.8 UseCaseの概念フロー
-
-```text
-userId
-+
-snapshotId
-    ↓
-MonthEndAssetSnapshotQuery
-    ↓
-月末資産状況取得
-    ↓
-NOT_FOUND？
-    ↓ No
-MonthEndHoldingValueQuery
-    ↓
-商品別月末評価額一覧取得
-    ↓
-holding_assets情報取得
-    ↓
-並び順適用
-    ↓
-Result DTO一覧
-```
-
-### 23.9 MonthEndAssetSnapshotQuery
-
-対象月末資産状況の取得は、専用Queryへ委譲する。
-
-概念例：
-
-```php
-$snapshot =
-    $this->monthEndAssetSnapshotQuery
-        ->findByIdAndUser(
-            snapshotId:
-                $snapshotId,
-
-            userId:
-                $userId,
-        );
-```
-
-取得条件は、
-
-```text
-month_end_asset_snapshots.id
-    = snapshotId
-
-AND
-
-month_end_asset_snapshots.user_id
-    = userId
-```
-
-とする。
-
-### 23.10 利用者境界をQueryへ含める
-
-以下のようなID単独取得は基本としない。
-
-```php
-MonthEndAssetSnapshot::find(
-    $snapshotId,
-);
-```
-
-対象取得時点から、
-
-```text
-snapshotId
-+
-userId
-```
-
-を条件へ含める。
-
-これにより、他利用者の月末資産状況を不要に取得しない。
-
-### 23.11 SoftDeletes
-
-`month_end_asset_snapshots`でSoftDeletesを採用する場合は、通常取得で論理削除済みを除外する。
-
-例えば、Modelで
-
-```php
-use SoftDeletes;
-```
-
-を使用している場合は、VAL-001では
-
-```php
-withTrashed()
-```
-
-を使用しない。
-
-### 23.12 MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
-
-対象月末資産状況を取得できない場合は、
-
-```php
-throw new
-    MonthEndAssetSnapshotNotFoundException();
-```
-
-とする。
-
-以下を同じ例外へ集約する。
-
-- 月末資産状況不存在
-- 他利用者所属
-- 論理削除済み
-
-最終的に、
-
-```text
-404 Not Found
-MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
-```
-
-へ変換する。
-
-### 23.13 confirmedは取得可否条件に含めない
-
-対象月末資産状況の
-
-```text
-confirmed
-```
-
-は、VAL-001の取得条件に含めない。
-
-以下のどちらでも商品別月末評価額を取得できる。
-
-```text
-confirmed = false
-confirmed = true
-```
-
-### 23.14 MonthEndHoldingValueQuery
-
-商品別月末評価額一覧の取得は、専用Queryへ委譲する。
-
-概念例：
-
-```php
-$holdingValues =
-    $this->monthEndHoldingValueQuery
-        ->findListBySnapshot(
-            snapshotId:
-                $snapshot->id,
-        );
-```
-
-主な取得条件は、
-
-```text
-month_end_holding_values.snapshot_id
-    = snapshotId
-```
-
-とする。
-
-### 23.15 Queryを起点にするテーブル
-
-VAL-001では、保存済みの商品別月末評価額を取得することが目的である。
-
-そのため、取得の起点は
-
-```text
-month_end_holding_values
-```
-
-とする。
-
-現在有効な
-
-```text
-holding_assets
-```
-
-一覧を起点として評価額を探す方式にはしない。
-
-### 23.16 holding_assetsをJOINする
-
-レスポンスに必要な保有商品情報を取得するため、
-
-```text
-month_end_holding_values
-    ↓
-holding_assets
-```
-
-をJOINする。
-
-概念例：
-
-```php
-MonthEndHoldingValue::query()
-    ->join(
-        'holding_assets',
-        'holding_assets.id',
-        '=',
-        'month_end_holding_values.holding_asset_id',
-    );
-```
-
-### 23.17 N+1を避ける
-
-以下のように、評価額1件ごとに保有商品を取得しない。
-
-```text
-Holding Value 1
-    ↓
-SELECT holding_assets
-
-Holding Value 2
-    ↓
-SELECT holding_assets
-
-Holding Value 3
-    ↓
-SELECT holding_assets
-```
-
-JOINまたはEager Loadを使用し、必要情報をまとめて取得する。
-
-### 23.18 JOIN方式
-
-VAL-001では、表示に必要な項目が明確であるため、Query BuilderによるJOINを使用してよい。
-
-概念例：
-
-```php
-return MonthEndHoldingValue::query()
-    ->select([
-        'month_end_holding_values.id',
-        'month_end_holding_values.holding_asset_id',
-        'month_end_holding_values.value',
-        'holding_assets.name as holding_asset_name',
-        'holding_assets.asset_type',
-    ])
-    ->join(
-        'holding_assets',
-        'holding_assets.id',
-        '=',
-        'month_end_holding_values.holding_asset_id',
-    )
-    ->where(
-        'month_end_holding_values.snapshot_id',
-        $snapshotId,
-    )
-    ->orderBy(
-        'month_end_holding_values.holding_asset_id',
-    )
-    ->get();
-```
-
-実際のカラム名は、テーブル定義を正とする。
-
-### 23.19 INNER JOINを基本とする
-
-外部キー制約によって、
-
-```text
-month_end_holding_values.holding_asset_id
-    ↓
-holding_assets.id
-```
-
-の参照整合性が保証されている場合は、INNER JOINを基本とする。
-
-対応する保有商品が存在しない状態は正常データとして扱わない。
-
-### 23.20 SoftDeletesされたholding_assetsの扱い
-
-保存済みの商品別月末評価額は、現在の保有商品状態だけを理由として除外しない。
-
-そのため、`holding_assets`の
-
-```text
-deleted_at IS NULL
-```
-
-をVAL-001のJOIN条件へ無条件に追加しない。
-
-例えば、Eloquent RelationshipのSoftDeletes Global Scopeによって過去の保有商品が自動除外されないよう注意する。
-
-### 23.21 過去データ参照でGlobal Scopeに注意する
-
-HoldingAsset ModelでSoftDeletesを使用している場合、Eager Loadすると
-
-```text
-deleted_at IS NULL
-```
-
-が自動適用される可能性がある。
-
-その結果、
-
-```text
-評価額は存在する
-+
-保有商品は論理削除済み
-    ↓
-商品情報が取得できない
-```
-
-となる可能性がある。
-
-過去評価額を参照可能とする仕様に合わせて、必要に応じて
-
-```php
-withTrashed()
-```
-
-またはQuery Builder JOINを使用する。
-
-### 23.22 現在のenabled状態で除外しない
-
-保有商品に利用状態カラムが存在する場合でも、
-
-```text
-enabled = true
-```
-
-だけをVAL-001の取得条件にしない。
-
-保存済みの過去評価額が現在状態の変更によって消えて見えないようにする。
-
-### 23.23 月末資産状況と評価額の利用者境界
-
-`month_end_holding_values`に直接`user_id`を持たない場合は、親となる
-
-```text
-month_end_asset_snapshots
-```
-
-で利用者境界を保証する。
-
-概念的には、
-
-```text
-UserContext
-    ↓
-month_end_asset_snapshots
-    ↓
-利用者境界確認済みsnapshotId
-    ↓
-month_end_holding_values
-```
-
-とする。
-
-### 23.24 holding_assets側で別利用者データが紐づかないようDB制約を前提とする
-
-正常なデータでは、
-
-```text
-month_end_holding_values
-    ↓
-holding_assets
-    ↓
-asset_accounts
-    ↓
-users
-```
-
-の所有関係が月末資産状況の利用者と整合していることを前提とする。
-
-VAL-001で各レコードごとに利用者所有関係を再計算する構成にはしない。
-
-ただし、登録API側およびDB制約でこの整合性を保証する。
-
-### 23.25 並び順
-
-一覧の並び順は、Query側で明示する。
-
-Phase1では、例えば、
-
-```text
-holding_asset_id ASC
-```
-
-を基本としてよい。
-
-資産口座や保有商品に明示的な表示順がある場合は、その仕様を優先する。
-
-### 23.26 ORDER BYなしにしない
-
-以下のようにDBの自然順へ依存しない。
-
-```php
-->where(
-    'snapshot_id',
-    $snapshotId,
-)
-->get();
-```
-
-一覧APIとして安定した表示順を保証するため、明示的に`orderBy()`を設定する。
-
-### 23.27 Queryで業務データを更新しない
-
-MonthEndHoldingValueQueryでは、以下を行わない。
-
-- 未登録評価額作成
-- 評価額更新
-- 評価額削除
-- 保有商品更新
-- 月末資産状況更新
-
-Queryは読み取りに責務を限定する。
-
-### 23.28 Repositoryを使用しない
-
-VAL-001では業務データを変更しないため、Repositoryは使用しない。
-
-概念的には、
-
-```text
-Query
-    → SELECT
-
-Repository
-    → INSERT / UPDATE / DELETE
-```
-
-という共通方針に従う。
-
-VAL-001で書き込み責務を持つクラスを追加しない。
-
-### 23.29 0件
-
-MonthEndHoldingValueQueryの取得結果が0件の場合は、例外にしない。
-
-概念例：
-
-```php
-if ($holdingValues->isEmpty()) {
-    return [];
-}
-```
-
-ただし、特別な分岐すら不要であれば、空CollectionをそのままDTO変換処理へ渡してよい。
-
-### 23.30 0件専用例外を作らない
-
-以下のような専用例外は作成しない。
-
-```text
-MonthEndHoldingValuesNotFoundException
-```
-
-一覧0件は正常状態として扱う。
-
-### 23.31 Result DTO
-
-商品別月末評価額1件を、専用Result DTOとして表現する。
-
-概念例：
-
-```php
-final readonly class
-    MonthEndHoldingValueListItem
-{
-    public function __construct(
-        public int $id,
-        public int $holdingAssetId,
-        public string $holdingAssetName,
-        public string $assetType,
-        public int $value,
-    ) {
-    }
-}
-```
-
-### 23.32 List Result DTO
-
-必要に応じて、一覧全体を表現するResult DTOを用意してもよい。
-
-概念例：
-
-```php
-final readonly class
-    ListMonthEndHoldingValuesResult
-{
-    /**
-     * @param list<MonthEndHoldingValueListItem> $items
-     */
-    public function __construct(
-        public array $items,
-    ) {
-    }
-}
-```
-
-一覧だけを返却する単純なAPIであれば、Item DTOのCollectionとして扱ってもよい。
-
-### 23.33 DTOへEloquent Modelを保持しない
-
-以下のようなResult DTOは基本としない。
-
-```php
-final readonly class
-    MonthEndHoldingValueListItem
-{
-    public function __construct(
-        public MonthEndHoldingValue $model,
-    ) {
-    }
-}
-```
-
-APIレスポンスに必要な値だけをDTOへ保持する。
-
-### 23.34 Query結果からDTOへ変換する
-
-概念例：
-
-```php
-$items =
-    $holdingValues
-        ->map(
-            static fn ($row) =>
-                new MonthEndHoldingValueListItem(
-                    id:
-                        (int) $row->id,
-
-                    holdingAssetId:
-                        (int) $row->holding_asset_id,
-
-                    holdingAssetName:
-                        $row->holding_asset_name,
-
-                    assetType:
-                        $row->asset_type,
-
-                    value:
-                        (int) $row->value,
-                ),
-        )
-        ->all();
-```
-
-### 23.35 assetTypeの変換
-
-DBで`asset_type`を`smallint`等で保持している場合は、API用の文字列表現へ変換する。
-
-例えば、
-
-```text
-1
-    ↓
-INVESTMENT_TRUST
-```
-
-のような変換を行う場合は、HLD系APIと同じEnumまたは変換処理を再利用する。
-
-VAL-001専用の異なるマッピングを作成しない。
-
-### 23.36 Enumを共通利用する
-
-Laravel Enumを使用する場合は、例えば、
-
-```php
-AssetType::from(
-    $row->asset_type,
-)->name;
-```
-
-など、保有商品APIと同じ変換方針を使用する。
-
-実際のEnum定義は、プロジェクト共通設計に従う。
-
-### 23.37 API Resource
-
-Result DTOを、専用API ResourceでAPIレスポンス形式へ変換する。
-
-概念例：
-
-```php
-final class MonthEndHoldingValueResource
-    extends JsonResource
-{
-    public function toArray(
-        Request $request,
-    ): array {
-        return [
-            'id'
-                => (string) $this->id,
-
-            'holdingAssetId'
-                => (string) $this->holdingAssetId,
-
-            'holdingAssetName'
-                => $this->holdingAssetName,
-
-            'assetType'
-                => $this->assetType,
-
-            'value'
-                => $this->value,
-        ];
-    }
-}
-```
-
-### 23.38 Resource Collection
-
-一覧レスポンスでは、Resource Collectionを使用する。
-
-概念例：
-
-```php
-MonthEndHoldingValueResource::collection(
-    $result->items,
-);
-```
-
-または、DTOのCollectionを直接渡せる構成としてよい。
-
-### 23.39 API Resourceで返却しない情報
-
-以下をVAL-001レスポンスへ含めない。
-
-- `snapshot_id`
-- `user_id`
-- `asset_account_id`
-- `created_at`
-- `updated_at`
-- `deleted_at`
-- DB内部管理情報
-
-必要な業務情報だけを返却する。
-
-### 23.40 snake_caseを直接返さない
-
-DBの
-
-```text
-holding_asset_id
-asset_type
-```
-
-は、APIでは
-
-```text
-holdingAssetId
-assetType
-```
-
-として返却する。
-
-DB構造をそのままAPI契約へ公開しない。
-
-### 23.41 Responder
-
-Responderは、Result DTO一覧を`200 OK`レスポンスへ変換する。
-
-概念例：
-
-```php
-final class ListMonthEndHoldingValuesResponder
-{
-    public function ok(
-        ListMonthEndHoldingValuesResult $result,
-    ): JsonResponse {
-        return response()->json(
-            [
-                'data'
-                    =>
-                    MonthEndHoldingValueResource::collection(
-                        $result->items,
-                    ),
-            ],
-            Response::HTTP_OK,
-        );
-    }
-}
-```
-
-実際のEnvelope生成方式は、API共通方針に従う。
-
-### 23.42 0件レスポンス
-
-0件の場合は、
-
-```json
-{
-  "data": []
-}
-```
-
-を返却する。
-
-Responderで0件専用の別レスポンス形式を作らない。
-
-### 23.43 Responderで行わないこと
-
-Responderでは、以下を行わない。
-
-- 月末資産状況検索
-- 利用者境界判定
-- 評価額検索
-- 保有商品検索
-- 並び順制御
-- `assetType`業務判定
-- DBアクセス
-
-HTTPレスポンス生成だけに責務を限定する。
-
-### 23.44 明示的トランザクション
-
-VAL-001では、参照専用であるため、
-
-```php
-DB::transaction()
-```
-
-を原則として使用しない。
-
-複数SELECTを厳密な同一時点で読み取る必要がある業務要件もPhase1では設けない。
-
-### 23.45 lockForUpdateを使用しない
-
-VAL-001では、
-
-```php
-lockForUpdate()
-```
-
-を使用しない。
-
-参照APIが更新APIの処理を不要に待機させない。
-
-### 23.46 キャッシュ
-
-Phase1では、VAL-001専用のサーバー側キャッシュを使用しない。
-
-商品別月末評価額は更新可能なデータであるため、DB上の最新状態をそのまま取得する。
-
-React側のQuery Cacheについては、VAL登録・更新API成功後にVAL-001のQueryをinvalidateする。
-
-### 23.47 例外変換
-
-主な例外変換は、以下とする。
-
-| 内部状態 | 独自エラーコード |
-|---|---|
-| `X-User-Id`未指定 | `USER_CONTEXT_REQUIRED` |
-| `X-User-Id`形式不正 | `INVALID_USER_ID` |
-| 利用者不存在 | `USER_NOT_FOUND` |
-| `snapshotId`形式不正 | `INVALID_SNAPSHOT_ID` |
-| 月末資産状況不存在 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
-| 他利用者の月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
-| 論理削除済み月末資産状況 | `MONTH_END_ASSET_SNAPSHOT_NOT_FOUND` |
-| 想定外例外 | `INTERNAL_SERVER_ERROR` |
-
-### 23.48 MonthEndAssetSnapshotNotFoundException
-
-対象月末資産状況が取得できない場合は、
-
-```php
-throw new
-    MonthEndAssetSnapshotNotFoundException();
-```
-
-とする。
-
-最終的に、
-
-```text
-404 Not Found
-MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
-```
-
-へ変換する。
-
-### 23.49 内部データ不整合
-
-例えば、
-
-```text
-month_end_holding_values
-    ↓
-holding_asset_id
-    ↓
-holding_assets不存在
-```
-
-のような通常発生しない状態を検出した場合は、利用者入力エラーとはしない。
-
-外部キー制約によって原則として防止する。
-
-万一発生した場合は、共通Exception Handlerで
-
-```text
-500 Internal Server Error
-INTERNAL_SERVER_ERROR
-```
-
-へ変換する。
-
-### 23.50 想定外例外
-
-想定外の例外は、API共通Exception Handlerで
-
-```text
-500 Internal Server Error
-INTERNAL_SERVER_ERROR
-```
-
-へ変換する。
-
-レスポンスへ、以下を含めない。
-
-- SQL
-- SQLSTATE
-- PostgreSQL内部エラー
-- 制約名
-- テーブル名
-- カラム名
-- Laravel内部例外メッセージ
-- PHP内部エラー
-- スタックトレース
-- サーバーファイルパス
-
-### 23.51 ログ
-
-VAL-001では、必要に応じて以下をログコンテキストへ設定する。
-
-- `requestId`
-- `userId`
-- `apiId`
-- `snapshotId`
-- `httpStatus`
-- `errorCode`
-
-`apiId`は、
-
-```text
-VAL-001
-```
-
-とする。
-
-### 23.52 正常時ログ
-
-正常終了時は、必要に応じて以下を記録する。
-
-```text
-requestId
-userId
-apiId = VAL-001
-snapshotId
-resultCount
-httpStatus = 200
-```
-
-商品名や評価額を通常ログへ不要に全件出力しない。
-
-### 23.53 0件時ログ
-
-商品別月末評価額が0件であっても、正常レスポンスである。
-
-そのため、通常は
-
-```text
-error
-warning
-```
-
-として扱わない。
-
-必要に応じて、
-
-```text
-resultCount = 0
-```
-
-を通常のアクセスログへ記録するだけとする。
-
-### 23.54 エラー時ログ
-
-異常時は、必要に応じて以下を記録する。
-
-```text
-requestId
-userId
-apiId = VAL-001
-snapshotId
-errorCode
-httpStatus
-```
-
-他利用者所属などの内部判定理由をAPIレスポンスへは公開しない。
-
-### 23.55 テスト実装方針
-
-Laravel側では、Feature Testを中心にVAL-001のAPI契約を確認する。
-
-また、Query、UseCase、API Resourceについて必要に応じてUnit TestまたはDatabase Testを行う。
-
-### 23.56 MonthEndAssetSnapshotQueryのDatabase Test
-
-以下を確認する。
-
-```text
-id一致
-+
-user_id一致
-    ↓
-取得できる
-```
-
-以下は取得できないこと。
-
-- 存在しない`snapshotId`
-- 他利用者の月末資産状況
-- 論理削除済み月末資産状況
-
-### 23.57 MonthEndHoldingValueQueryのDatabase Test
-
-対象`snapshotId`について、該当する商品別月末評価額だけを取得できることを確認する。
-
-例えば、
-
-```text
-Snapshot A
-    Holding Value 1
-    Holding Value 2
-
-Snapshot B
-    Holding Value 3
-```
-
-の場合に、Snapshot Aを指定すると、
-
-```text
-Holding Value 1
-Holding Value 2
-```
-
-だけが返却されること。
-
-### 23.58 JOINのTest
-
-商品別月末評価額と保有商品情報が正しく結合されることを確認する。
-
-主に、
-
-```text
-holdingAssetId
-holdingAssetName
-assetType
-value
-```
-
-が期待値と一致すること。
-
-### 23.59 無効化済み保有商品のTest
-
-保存済みの商品別月末評価額に紐づく保有商品を現在無効化済み状態にする。
-
-その状態でも、VAL-001で保存済み評価額が取得できることを確認する。
-
-### 23.60 論理削除済み保有商品のTest
-
-仕様上、論理削除済み保有商品に紐づく過去評価額も参照可能とする場合は、その商品情報がSoftDeletes Global Scopeによって欠落しないことを確認する。
-
-### 23.61 0件Test
-
-対象月末資産状況は存在するが、商品別月末評価額が0件の状態を用意する。
-
-期待結果：
-
-```http
-200 OK
-```
-
-```json
-{
-  "data": []
-}
-```
-
-となること。
-
-### 23.62 他月データ非混在Test
-
-同じ保有商品について複数月の商品別評価額を登録する。
-
-指定した`snapshotId`に紐づく評価額だけが返却されることを確認する。
-
-### 23.63 並び順Test
-
-複数の商品別月末評価額を意図的に異なる登録順で作成する。
-
-VAL-001では、DB登録順ではなくAPI仕様で定めた固定順となることを確認する。
-
-### 23.64 API ResourceのTest
-
-1件について、以下の形式となることを確認する。
-
-```json
-{
-  "id": "101",
-  "holdingAssetId": "10",
-  "holdingAssetName": "eMAXIS Slim 全世界株式",
-  "assetType": "INVESTMENT_TRUST",
-  "value": 350000
-}
-```
-
-### 23.65 API Resourceの型Test
-
-以下を確認する。
-
-```text
-id
-    → string
-
-holdingAssetId
-    → string
-
-holdingAssetName
-    → string
-
-assetType
-    → string
-
-value
-    → integer
-```
-
-### 23.66 API Resourceで返却しない項目
-
-以下がレスポンスへ含まれないことを確認する。
-
-- `snapshotId`
-- `snapshot_id`
-- `userId`
-- `user_id`
-- `assetAccountId`
-- `createdAt`
-- `updatedAt`
-- `deletedAt`
-- DB内部管理情報
-
-### 23.67 Feature Test正常系
-
-以下を実行する。
-
-```http
-GET /api/v1/month-end-asset-snapshots/20/holding-values
-X-User-Id: 1
-Accept: application/json
-```
-
-期待結果：
-
-```http
-200 OK
-```
-
-かつ、指定Snapshotに属する商品別月末評価額一覧が返却されること。
-
-### 23.68 Feature Test他利用者
-
-他利用者に属する`snapshotId`を指定する。
-
-期待結果：
-
-```text
-404 Not Found
-MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
-```
-
-となること。
-
-他利用者の商品別月末評価額がレスポンスへ含まれないこと。
-
-### 23.69 Feature Test確定済み
-
-対象Snapshotを
-
-```text
-confirmed = true
-```
-
-とする。
-
-VAL-001を実行しても、
-
-```http
-200 OK
-```
-
-で商品別月末評価額一覧を取得できることを確認する。
-
-### 23.70 副作用なしTest
-
-VAL-001実行前後で、以下が変更されないことを確認する。
-
-- `month_end_asset_snapshots`
-- `month_end_holding_values`
-- `holding_assets`
-
-特に、
-
-```text
-INSERT
-UPDATE
-DELETE
-```
-
-が発生しないことを確認する。
-
----
-
-## 24. React・TypeScriptでの利用
-
-VAL-001は、月末資産状況詳細画面などで、指定された月末資産状況に属する商品別月末評価額一覧を取得・表示する際に使用する。
-
-VAL-001は参照専用GET APIであるため、TanStack Queryを使用する場合はQueryとして扱う。
-
-概念的な利用フローは、以下とする。
-
-```text
-月末資産状況詳細画面
-    ↓
-URL等からsnapshotId取得
-    ↓
-SNP-003
-月末資産状況詳細取得
-    ↓
-VAL-001
-商品別月末評価額一覧取得
-    ↓
-商品別月末評価額一覧表示
-```
-
-### 24.1 TypeScript型
-
-VAL-001では、Request Bodyを使用しない。
-
-API呼び出しに必要な値は、
-
-```text
-snapshotId
-```
-
-のみとする。
-
-概念例：
-
-```ts
-export type GetMonthEndHoldingValuesVariables = {
-  snapshotId: string;
-};
-```
-
-### 24.2 レスポンス型
-
-商品別月末評価額1件を、以下のような型として定義する。
-
-概念例：
-
-```ts
-export type MonthEndHoldingValue = {
-  id: string;
-  holdingAssetId: string;
-  holdingAssetName: string;
-  assetType: AssetType;
-  value: number;
-};
-```
-
-`assetType`は、HLD系APIと同じ共通型を使用する。
-
-### 24.3 assetTypeの共通型
-
-商品種別は、VAL-001専用の型を新たに定義しない。
-
-例えば、HLD系APIで以下の型を使用している場合は、
-
-```ts
-export type AssetType =
-  | 'INVESTMENT_TRUST'
-  | 'STOCK'
-  | 'BOND';
-```
-
-VAL-001でも同じ`AssetType`を使用する。
-
-実際の値は、API共通定義および保有商品設計を正とする。
-
-### 24.4 正常レスポンス型
-
-API共通Envelopeを使用する場合は、以下のように定義する。
-
-概念例：
-
-```ts
-export type GetMonthEndHoldingValuesResponse =
-  ApiResponse<MonthEndHoldingValue[]>;
-```
-
-レスポンス例：
-
-```json
-{
-  "data": [
-    {
-      "id": "101",
-      "holdingAssetId": "10",
-      "holdingAssetName": "eMAXIS Slim 全世界株式",
-      "assetType": "INVESTMENT_TRUST",
-      "value": 350000
-    }
-  ]
-}
-```
-
-### 24.5 IDはstringとして扱う
-
-以下のIDは、React・TypeScript側ではstringとして扱う。
-
-```text
-snapshotId
-id
-holdingAssetId
-```
-
-DB上で`bigint`であっても、フロントエンドで`number`へ変換しない。
-
-### 24.6 valueはnumberとして扱う
-
-商品別月末評価額は、
-
-```ts
-value: number;
-```
-
-として扱う。
-
-日本円整数であるため、通常の金額表示では小数処理を行わない。
-
-### 24.7 API Client
-
-VAL-001を呼び出す専用API Client関数を定義する。
-
-概念例：
-
-```ts
-export const getMonthEndHoldingValues =
-  async (
-    snapshotId: string,
-  ): Promise<MonthEndHoldingValue[]> => {
-    const response =
-      await apiClient.get<
-        GetMonthEndHoldingValuesResponse
-      >(
-        `/api/v1/month-end-asset-snapshots/${snapshotId}/holding-values`,
-      );
-
-    return response.data.data;
-  };
-```
-
-コンポーネントから直接`fetch`や`axios`を呼び出さない。
-
-### 24.8 userIdをAPI Client引数へ含めない
-
-以下のようなAPI Clientにはしない。
-
-```ts
-getMonthEndHoldingValues(
-  userId,
-  snapshotId,
-);
-```
-
-利用者IDは、共通API Clientから
-
-```text
-X-User-Id
-```
-
-として付与する。
-
-VAL-001固有の引数は、
-
-```text
-snapshotId
-```
-
-だけとする。
-
-### 24.9 X-User-Id
-
-`X-User-Id`は、VAL-001専用処理ではなく、共通API Clientから付与する。
-
-概念例：
-
-```ts
-apiClient.interceptors.request.use(
-  (config) => {
-    config.headers['X-User-Id'] =
-      currentUserId;
-
-    return config;
-  },
-);
-```
-
-各Page、Component、Query Hookから直接`X-User-Id`を設定しない。
-
-### 24.10 Request Bodyを送信しない
-
-VAL-001はGET APIであるため、Request Bodyを送信しない。
-
-以下のような呼び出しにはしない。
-
-```ts
-apiClient.get(
-  '/api/v1/month-end-asset-snapshots/20/holding-values',
-  {
-    data: {
-      snapshotId: '20',
-    },
-  },
-);
-```
-
-`snapshotId`はURLへ含める。
-
-### 24.11 Queryとして扱う
-
-VAL-001はサーバー状態を変更しないため、TanStack QueryではQueryとして扱う。
-
-概念例：
-
-```ts
-export const useMonthEndHoldingValues =
-  (
-    snapshotId: string,
-  ) => {
-    return useQuery({
-      queryKey:
-        monthEndHoldingValueKeys.list(
-          snapshotId,
-        ),
-
-      queryFn: () =>
-        getMonthEndHoldingValues(
-          snapshotId,
-        ),
-    });
-  };
-```
-
-Mutationとして実装しない。
-
-### 24.12 Query Key
-
-商品別月末評価額のQuery Keyは、共通定義として管理する。
-
-概念例：
-
-```ts
-export const monthEndHoldingValueKeys = {
-  all: [
-    'monthEndHoldingValues',
-  ] as const,
-
-  lists: () =>
-    [
-      ...monthEndHoldingValueKeys.all,
-      'list',
-    ] as const,
-
-  list: (
-    snapshotId: string,
-  ) =>
-    [
-      ...monthEndHoldingValueKeys.lists(),
-      snapshotId,
-    ] as const,
-};
-```
-
-これにより、月末資産状況ごとの商品別月末評価額を別Cacheとして管理する。
-
-### 24.13 snapshotIdをQuery Keyへ含める
-
-以下のようなQuery Keyにはしない。
-
-```ts
-[
-  'monthEndHoldingValues',
-]
-```
-
-VAL-001の結果は、`snapshotId`によって異なる。
-
-そのため、
-
-```ts
-[
-  'monthEndHoldingValues',
-  'list',
-  snapshotId,
-]
-```
-
-のように、`snapshotId`をQuery Keyへ含める。
-
-### 24.14 利用者切替を考慮する
-
-Phase1では、`X-User-Id`によって操作対象利用者を切り替える。
-
-そのため、利用者切替時に前利用者の商品別月末評価額を誤表示しないようにする。
-
-正式な方式は、React共通設計に従う。
-
-### 24.15 Query KeyへuserIdを含めてもよい
-
-利用者ごとのCache境界を明示する場合は、Query Keyへ`userId`を含めてもよい。
-
-概念例：
-
-```ts
-export const monthEndHoldingValueKeys = {
-  list: (
-    userId: string,
-    snapshotId: string,
-  ) =>
-    [
-      'monthEndHoldingValues',
-      userId,
-      'list',
-      snapshotId,
-    ] as const,
-};
-```
-
-ただし、`userId`をVAL-001のAPI Client引数へ渡すという意味ではない。
-
-`userId`はCache管理上だけ使用し、HTTP Requestでは共通API Clientが`X-User-Id`として付与する。
-
-### 24.16 enabledによるQuery制御
-
-`snapshotId`が取得できていない状態では、VAL-001を実行しない。
-
-概念例：
-
-```ts
-return useQuery({
-  queryKey:
-    monthEndHoldingValueKeys.list(
-      snapshotId,
-    ),
-
-  queryFn: () =>
-    getMonthEndHoldingValues(
-      snapshotId,
-    ),
-
-  enabled:
-    snapshotId.length > 0,
-});
-```
-
-不完全なURL情報でAPI Requestを送信しない。
-
-### 24.17 SNP-003との併用
-
-月末資産状況詳細画面では、SNP-003とVAL-001を併用してよい。
-
-概念的には、
-
-```text
-snapshotId
-    ├─ SNP-003
-    │    ↓
-    │  targetYearMonth
-    │  confirmed
-    │
-    └─ VAL-001
-         ↓
-       商品別月末評価額一覧
-```
-
-とする。
-
-VAL-001では`targetYearMonth`や`confirmed`を重複取得する必要はない。
-
-### 24.18 SNP-003の成功を必須条件としなくてもよい
-
-SNP-003とVAL-001が互いに独立して取得可能であれば、必ずしも
-
-```text
-SNP-003成功
-    ↓
-VAL-001実行
-```
-
-という直列処理にしなくてよい。
-
-`snapshotId`が確定している場合は、並列で取得してよい。
-
-概念的には、
-
-```text
-snapshotId
-    ├─────────────┐
-    ↓             ↓
-SNP-003        VAL-001
-    ↓             ↓
-月情報          商品別評価額
-    └──────┬──────┘
-           ↓
-        画面表示
-```
-
-不要なウォーターフォールを発生させない。
-
-### 24.19 0件を正常状態として扱う
-
-VAL-001が
-
-```json
-{
-  "data": []
-}
-```
-
-を返した場合は、エラー表示にしない。
-
-例えば、
-
-```text
-商品別月末評価額は
-まだ登録されていません。
-```
-
-などのEmpty Stateを表示する。
-
-正式な文言は、画面設計に従う。
-
-### 24.20 0件と通信エラーを区別する
-
-以下は異なる状態として扱う。
-
-```text
-data = []
-    → 正常
-    → 登録済み評価額0件
-
-API Error
-    → 異常
-    → 一覧取得失敗
-```
-
-例えば、
-
-```tsx
-if (query.isError) {
-  return (
-    <ErrorMessage />
-  );
-}
-
-if (
-  query.data?.length === 0
-) {
-  return (
-    <EmptyState />
-  );
-}
-```
-
-のように表示を分ける。
-
-### 24.21 ローディング状態
-
-VAL-001取得中は、ローディング状態を表示する。
-
-概念例：
-
-```tsx
-if (query.isPending) {
-  return (
-    <LoadingIndicator />
-  );
-}
-```
-
-SNP-003とVAL-001を並列取得する場合は、画面全体を一律にブロックするか、各セクション単位でローディング表示するかを画面設計で決定する。
-
-### 24.22 一覧表示
-
-取得したデータは、商品別月末評価額一覧として表示する。
-
-概念例：
-
-```tsx
-{holdingValues.map(
-  (holdingValue) => (
-    <MonthEndHoldingValueRow
-      key={holdingValue.id}
-      holdingValue={
-        holdingValue
-      }
-    />
-  ),
-)}
-```
-
-### 24.23 keyにはidを使用する
-
-Reactの一覧描画では、
-
-```text
-holdingValue.id
-```
-
-を`key`として使用する。
-
-配列indexを`key`として使用しない。
-
-概念例：
-
-```tsx
-<MonthEndHoldingValueRow
-  key={holdingValue.id}
-  holdingValue={holdingValue}
-/>
-```
-
-### 24.24 金額表示
-
-`value`は日本円整数として受け取る。
-
-表示時は、共通の金額Formatterを使用する。
-
-概念例：
-
-```ts
-export const formatYen = (
-  value: number,
-): string =>
-  new Intl.NumberFormat(
-    'ja-JP',
-    {
-      style: 'currency',
-      currency: 'JPY',
-    },
-  ).format(value);
-```
-
-例えば、
-
-```text
-350000
-```
-
-を、
-
-```text
-￥350,000
-```
-
-などとして表示する。
-
-正式な表記は、画面共通方針に従う。
-
-### 24.25 コンポーネント内で金額計算をしない
-
-VAL-001で取得した
-
-```text
-value
-```
-
-は、保存済みの商品別月末評価額である。
-
-コンポーネント内で、
-
-```text
-数量
-×
-現在価格
-```
-
-などによって再計算しない。
-
-APIから取得した保存済み評価額を表示する。
-
-### 24.26 holdingAssetName
-
-商品名表示には、
-
-```ts
-holdingValue.holdingAssetName
-```
-
-を使用する。
-
-商品名を表示するためだけにHLD-003などを商品件数分追加実行しない。
-
-VAL-001レスポンスに含まれる保有商品名を使用する。
-
-### 24.27 assetType
-
-商品種別表示には、
-
-```ts
-holdingValue.assetType
-```
-
-を使用する。
-
-表示ラベルへの変換は、HLD系画面と同じ共通変換処理を使用する。
-
-概念例：
-
-```ts
-export const assetTypeLabels:
-  Record<AssetType, string> = {
-    INVESTMENT_TRUST:
-      '投資信託',
-
-    STOCK:
-      '株式',
-
-    BOND:
-      '債券',
-  };
-```
-
-実際のEnum値・表示名は、共通定義を正とする。
-
-### 24.28 APIの並び順を基本とする
-
-VAL-001では、API側で固定の並び順を適用する。
-
-そのため、画面固有の要件がなければReact側で再ソートしない。
-
-```ts
-query.data?.sort(...)
-```
-
-を各コンポーネントで個別実装しない。
-
-### 24.29 クライアント側で未登録商品を補完しない
-
-VAL-001に含まれていない保有商品について、React側で勝手に
-
-```ts
-{
-  holdingAssetId: '10',
-  value: 0,
-}
-```
-
-のような疑似データを生成しない。
-
-以下は別状態である。
-
-```text
-商品別月末評価額未登録
-
-≠
-
-商品別月末評価額0円
-```
-
-### 24.30 未登録状況の表示が必要な場合
-
-画面要件として、
-
-```text
-どの商品が未登録なのか
-```
-
-まで表示する必要がある場合は、VAL-001だけでは判定できない可能性がある。
-
-その場合は、
-
-```text
-保有商品情報
-+
-VAL-001
-```
-
-を組み合わせるか、未登録状況を返却する別API設計を検討する。
-
-VAL-001のレスポンスだけから存在しない評価額を0円として推測しない。
-
-### 24.31 確定状態によってVAL-001を停止しない
-
-SNP-003で
-
-```text
-confirmed = true
-```
-
-を取得した場合でも、VAL-001は実行可能とする。
-
-確定済み月末資産状況でも、商品別月末評価額を参照できるためである。
-
-### 24.32 確定状態は編集UIの制御に使用する
-
-`confirmed`は、VAL-001の取得可否ではなく、商品別月末評価額の登録・更新UIを表示するかどうかの判断に使用してよい。
-
-概念的には、
-
-```text
-confirmed = false
-    ↓
-評価額編集UIを表示可能
-
-confirmed = true
-    ↓
-参照のみ
-```
-
-とする。
-
-ただし、更新可否の最終保証はバックエンド側で行う。
-
-### 24.33 VAL登録・更新後のCache無効化
-
-商品別月末評価額の登録または更新に成功した場合は、対象`snapshotId`のVAL-001 Query Cacheを無効化する。
-
-概念例：
-
-```ts
-await queryClient.invalidateQueries({
-  queryKey:
-    monthEndHoldingValueKeys.list(
-      snapshotId,
-    ),
-});
-```
-
-### 24.34 登録後は再取得を基本とする
-
-商品別月末評価額登録後に、React側で一覧Cacheへ手動追加することも可能である。
-
-ただし、Phase1では実装を単純化するため、
-
-```text
-登録成功
-    ↓
-VAL-001 invalidate
-    ↓
-VAL-001再取得
-```
-
-を基本とする。
-
-### 24.35 更新後も再取得を基本とする
-
-商品別月末評価額更新後も、
-
-```text
-更新成功
-    ↓
-VAL-001 invalidate
-    ↓
-VAL-001再取得
-```
-
-を基本とする。
-
-一覧Cacheを複雑に手動編集しない。
-
-### 24.36 SNP-004確定成功後
-
-SNP-004成功によって商品別月末評価額自体が変更されない場合は、VAL-001のCacheを必ずしも無効化する必要はない。
-
-ただし、月末資産状況詳細画面全体を最新状態へ同期する方針であれば、関連Queryをまとめてinvalidateしてもよい。
-
-### 24.37 SNP-005確定解除成功後
-
-SNP-005成功時も、商品別月末評価額自体が変更されない場合は、VAL-001の再取得を必須とはしない。
-
-確定状態はSNP系Queryを更新する。
-
-### 24.38 INVALID_SNAPSHOT_ID
-
-以下のエラーを受信した場合は、
-
-```text
-INVALID_SNAPSHOT_ID
-```
-
-不正なURLまたは不正な画面状態として扱う。
-
-通常画面では、一覧画面などへ戻る導線を表示してよい。
-
-### 24.39 MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
-
-以下の場合は、
-
-```text
-MONTH_END_ASSET_SNAPSHOT_NOT_FOUND
-```
-
-を受信する。
-
-- 月末資産状況不存在
-- 他利用者所属
-- 論理削除済み
-
-React側では、その理由を推測しない。
-
-例えば、
-
-```text
-指定された月末資産状況が
-見つかりません。
-```
-
-などの共通表示とする。
-
-### 24.40 他利用者所属を推測しない
-
-`MONTH_END_ASSET_SNAPSHOT_NOT_FOUND`を受信しても、
-
-```text
-他の利用者の
-月末資産状況です。
-```
-
-などと表示しない。
-
-API契約上、不存在との区別はできない。
-
-### 24.41 USER_CONTEXT_REQUIRED
-
-```text
-USER_CONTEXT_REQUIRED
-```
-
-は、API共通の利用者コンテキストエラーとして扱う。
-
-VAL-001専用のエラー処理を各Componentへ実装しない。
-
-### 24.42 INVALID_USER_ID
-
-```text
-INVALID_USER_ID
-```
-
-も、利用者コンテキストに関する共通エラーとして扱う。
-
-### 24.43 USER_NOT_FOUND
-
-```text
-USER_NOT_FOUND
-```
-
-の場合は、現在選択されている利用者が有効ではない状態として共通処理する。
-
-### 24.44 INTERNAL_SERVER_ERROR
-
-```text
-INTERNAL_SERVER_ERROR
-```
-
-の場合は、共通サーバーエラーとして扱う。
-
-例えば、
-
-```text
-商品別月末評価額を
-取得できませんでした。
-時間をおいて再度お試しください。
-```
-
-などを表示する。
-
-### 24.45 エラーコードで分岐する
-
-フロントエンドでは、`message`文字列ではなく、
-
-```text
-error.code
-```
-
-を基準としてエラー処理を分岐する。
-
-概念例：
-
-```ts
-switch (error.code) {
-  case 'INVALID_SNAPSHOT_ID':
-    // 不正なID
-    break;
-
-  case 'MONTH_END_ASSET_SNAPSHOT_NOT_FOUND':
-    // 対象不存在
-    break;
-
-  default:
-    // 共通エラー
-    break;
-}
-```
-
-### 24.46 GETのRetry
-
-VAL-001は副作用を持たないGET APIであるため、一時的な通信エラーに対する限定的なRetryを許可してよい。
-
-概念例：
-
-```ts
-useQuery({
-  queryKey:
-    monthEndHoldingValueKeys.list(
-      snapshotId,
-    ),
-
-  queryFn: () =>
-    getMonthEndHoldingValues(
-      snapshotId,
-    ),
-
-  retry: 1,
-});
-```
-
-ただし、404等の業務上確定したエラーについて無意味なRetryを行わないよう、React共通方針に従う。
-
-### 24.47 Pageの責務
-
-月末資産状況詳細Pageでは、主に以下を担当する。
-
-- URLから`snapshotId`を取得する
-- SNP-003を利用して月末資産状況を取得する
-- VAL-001を利用して商品別月末評価額を取得する
-- Loading / Error / Empty Stateを制御する
-- 商品別月末評価額一覧を配置する
-- 確定状態に応じて編集UIを制御する
-
-HTTP通信処理そのものは、API ClientやQuery Hookへ委譲する。
-
-### 24.48 一覧Componentの責務
-
-商品別月末評価額一覧Componentでは、主に以下を担当する。
-
-- 商品別月末評価額一覧表示
-- 商品名表示
-- 商品種別表示
-- 評価額表示
-- 0件時のEmpty State表示
-
-以下は行わない。
-
-- API通信
-- 利用者境界判定
-- 未登録評価額生成
-- 評価額再計算
-- 確定可否判定
-
-### 24.49 Row Componentの責務
-
-1件分の表示Componentでは、例えば、
-
-```ts
-type Props = {
-  holdingValue:
-    MonthEndHoldingValue;
-};
-```
-
-を受け取り、
-
-- 保有商品名
-- 商品種別
-- 月末評価額
-
-などを表示する。
-
-DB構造やAPI通信方式をRow Componentへ持ち込まない。
-
-### 24.50 Query Hookの責務
-
-Query Hookでは、主に以下を担当する。
-
-- VAL-001実行
-- Query Key管理
-- Loading状態管理
-- Error状態管理
-- Cache管理
-
-画面固有の表示文言やレイアウトはQuery Hookへ持たせない。
-
-### 24.51 API Clientの責務
-
-API Clientでは、
-
-```text
-GET
-/api/v1/month-end-asset-snapshots/{snapshotId}/holding-values
-```
-
-のHTTP通信と、型付きレスポンス取得を担当する。
-
-以下をAPI Clientへ含めない。
-
-- Toast表示
-- 画面遷移
-- Loading表示
-- Empty State表示
-- 金額フォーマット
-- Query Cache操作
-- 確定状態によるUI判定
-
-### 24.52 概念的なディレクトリ構成
-
-例えば、以下のように整理できる。
-
-```text
-features/
-└── month-end-assets/
-    ├── api/
-    │   ├── getMonthEndAssetSnapshot.ts
-    │   └── getMonthEndHoldingValues.ts
-    ├── components/
-    │   ├── MonthEndHoldingValueList.tsx
-    │   └── MonthEndHoldingValueRow.tsx
-    ├── hooks/
-    │   ├── useMonthEndAssetSnapshot.ts
-    │   └── useMonthEndHoldingValues.ts
-    ├── types/
-    │   ├── monthEndAssetSnapshot.ts
-    │   └── monthEndHoldingValue.ts
-    └── pages/
-        └── MonthEndAssetDetailPage.tsx
-```
-
-正式なディレクトリ構成は、Reactアーキテクチャ設計に従う。
-
-### 24.53 HLD系の共通型を再利用する
-
-VAL-001では、保有商品に関する共通概念について、HLD系で定義済みの型を可能な範囲で再利用する。
-
-例えば、
-
-```text
-AssetType
-```
-
-を共通化する。
-
-一方、HLD-001のレスポンス型そのものをVAL-001へ流用する必要はない。
-
-APIごとの責務に応じてレスポンス型を定義する。
-
-### 24.54 APIレスポンス型と画面表示型を必要に応じて分離する
-
-Phase1では、VAL-001のレスポンス型をそのまま表示へ使用してよい。
-
-将来的に画面固有の情報が増えた場合は、
-
-```text
-API Response
-    ↓
-View Model
-    ↓
-Component
-```
-
-と分離してよい。
-
-現時点では、不要な変換層を追加しない。
-
-### 24.55 フロントエンドで行わないこと
-
-VAL-001のReact・TypeScript実装では、以下をフロントエンドの責務としない。
-
-- 利用者境界の最終保証
-- 月末資産状況存在確認の最終保証
-- 論理削除判定
-- 商品別月末評価額のDB検索条件決定
-- 未登録評価額の自動生成
-- 未登録を0円へ変換
-- 保存済み評価額の再計算
-- 商品別月末評価額の確定可否判定
-- 保有商品の現在状態による過去データ除外
-- DB上の並び順保証
-- `assetType`の業務ルール判定
-
-フロントエンドは、
-
-```text
-snapshotId取得
-    ↓
-VAL-001実行
-    ↓
-Loading / Error / Empty判定
-    ↓
-商品別月末評価額一覧表示
-```
-
-という責務を基本とする。
-
----
-
-## 25. 設計上の補足
-
-### 25.1 月末資産状況配下のリソースとする理由
+### 23.1 月末資産状況配下のリソースとする理由
 
 商品別月末評価額は、単独で存在する情報ではなく、特定の月末資産状況に紐づく。
 
@@ -5615,7 +3179,7 @@ GET /api/v1/month-end-asset-snapshots/{snapshotId}/holding-values
 
 を明確にする。
 
-### 25.2 targetYearMonthをRequestへ持たせない理由
+### 23.2 targetYearMonthをRequestへ持たせない理由
 
 対象年月は、`snapshotId`から一意に決定できる。
 
@@ -5641,7 +3205,7 @@ targetYearMonth
 
 のように同じ意味の識別情報を二重指定させない。
 
-### 25.3 商品別月末評価額を現在の保有商品一覧から生成しない理由
+### 23.3 商品別月末評価額を現在の保有商品一覧から生成しない理由
 
 VAL-001は、
 
@@ -5679,7 +3243,7 @@ holding_assets
 
 として取得する。
 
-### 25.4 保存済み過去データを現在状態から独立して扱う
+### 23.4 保存済み過去データを現在状態から独立して扱う
 
 保有商品は、商品別月末評価額を登録した後に無効化される可能性がある。
 
@@ -5698,7 +3262,7 @@ holding_assets
 
 そのため、現在の保有商品状態だけを理由に過去の評価額を一覧から除外しない。
 
-### 25.5 保有商品のSoftDeletesに注意する
+### 23.5 保有商品のSoftDeletesに注意する
 
 `holding_assets`でSoftDeletesを使用している場合、通常のEloquent Relationshipでは、
 
@@ -5718,7 +3282,7 @@ withTrashed()
 
 またはQuery BuilderによるJOINを使用する。
 
-### 25.6 現在の有効状態で絞り込まない
+### 23.6 現在の有効状態で絞り込まない
 
 保有商品に利用状態を表す属性が存在する場合でも、
 
@@ -5730,7 +3294,7 @@ enabled = true
 
 VAL-001は現在利用中の商品一覧ではなく、保存済みの商品別月末評価額を参照するAPIだからである。
 
-### 25.7 未登録と0円を区別する
+### 23.7 未登録と0円を区別する
 
 VAL-001では、
 
@@ -5769,7 +3333,7 @@ value = 0
 
 として補完しない。
 
-### 25.8 未登録商品を一覧へ含めない理由
+### 23.8 未登録商品を一覧へ含めない理由
 
 VAL-001の責務は、
 
@@ -5801,7 +3365,7 @@ VAL-001の責務は、
 
 を組み合わせる、または未登録状態まで返す別APIを検討する。
 
-### 25.9 VAL-001で確定可否を判定しない理由
+### 23.9 VAL-001で確定可否を判定しない理由
 
 商品別月末評価額一覧を取得した結果、必要な商品の評価額が不足している場合がある。
 
@@ -5825,7 +3389,7 @@ SNP-004
 
 と分離する。
 
-### 25.10 GETで不足データを生成しない理由
+### 23.10 GETで不足データを生成しない理由
 
 商品別月末評価額が未登録であっても、VAL-001実行時に
 
@@ -5837,7 +3401,7 @@ month_end_holding_values
 
 GET APIに副作用を持たせないためである。
 
-### 25.11 GETでデータ補正しない理由
+### 23.11 GETでデータ補正しない理由
 
 VAL-001は参照APIであるため、取得時に以下を行わない。
 
@@ -5850,7 +3414,7 @@ VAL-001は参照APIであるため、取得時に以下を行わない。
 
 データ不整合がある場合は、別の更新処理または保守対応で解決する。
 
-### 25.12 月末残高APIと分離する理由
+### 23.12 月末残高APIと分離する理由
 
 Life Plannerでは、残高記録単位によって保存先を分離する。
 
@@ -5874,7 +3438,7 @@ VAL系API
 
 VAL-001で口座単位残高を混在させない。
 
-### 25.13 HLD系APIと分離する理由
+### 23.13 HLD系APIと分離する理由
 
 HLD系APIは、
 
@@ -5905,7 +3469,7 @@ VAL
 
 とする。
 
-### 25.14 評価額を再計算しない理由
+### 23.14 評価額を再計算しない理由
 
 VAL-001では、保存済みの
 
@@ -5927,7 +3491,7 @@ month_end_holding_values.value
 
 VAL-001は、月末時点に確定または入力された保存済み値を参照するAPIとする。
 
-### 25.15 現在価格を使わない理由
+### 23.15 現在価格を使わない理由
 
 現在価格によって過去の評価額を再計算すると、過去の月末資産状況が時間経過によって変化してしまう。
 
@@ -5939,7 +3503,7 @@ VAL-001は、月末時点に確定または入力された保存済み値を参�
 
 は、2026-01として保存された値を返却する。
 
-### 25.16 snapshotIdをレスポンス各行へ返さない理由
+### 23.16 snapshotIdをレスポンス各行へ返さない理由
 
 `snapshotId`はRequest URLですでに指定されている。
 
@@ -5955,7 +3519,7 @@ VAL-001は、月末時点に確定または入力された保存済み値を参�
 
 レスポンスを必要最小限に保つ。
 
-### 25.17 targetYearMonthを各行へ返さない理由
+### 23.17 targetYearMonthを各行へ返さない理由
 
 対象年月も、親となる月末資産状況から一意に決定できる。
 
@@ -5969,7 +3533,7 @@ targetYearMonth
 
 対象年月が必要な画面では、SNP-003等の月末資産状況情報を使用する。
 
-### 25.18 holdingAssetNameを返す理由
+### 23.18 holdingAssetNameを返す理由
 
 商品別月末評価額だけでは、画面表示時にどの商品なのかを判断しづらい。
 
@@ -5989,7 +3553,7 @@ holdingAssetName
 
 これにより、React側で評価額1件ごとにHLD-003を追加実行する必要をなくす。
 
-### 25.19 assetTypeを返す理由
+### 23.19 assetTypeを返す理由
 
 商品別評価額一覧では、商品名だけでなく商品種別も表示に使用する可能性がある。
 
@@ -6003,7 +3567,7 @@ assetType
 
 ただし、表現方法はHLD系APIと統一する。
 
-### 25.20 HLD系とassetType定義を共通化する
+### 23.20 HLD系とassetType定義を共通化する
 
 例えば、
 
@@ -6017,7 +3581,7 @@ BOND
 
 Laravel側では共通Enum、React側では共通`AssetType`型を使用する。
 
-### 25.21 assetAccountIdを返却しない理由
+### 23.21 assetAccountIdを返却しない理由
 
 現時点のVAL-001では、商品別月末評価額一覧として必要な情報を
 
@@ -6034,7 +3598,7 @@ value
 
 必要になるか不明な項目を先回りして増やさない。
 
-### 25.22 一覧0件を正常とする理由
+### 23.22 一覧0件を正常とする理由
 
 月末資産状況を作成した直後など、商品別月末評価額がまだ登録されていないことは正常に発生し得る。
 
@@ -6048,7 +3612,7 @@ value
 
 を正常レスポンスとする。
 
-### 25.23 一覧0件専用エラーを作らない理由
+### 23.23 一覧0件専用エラーを作らない理由
 
 一覧取得APIで0件となることは、対象月末資産状況が存在しないこととは異なる。
 
@@ -6065,13 +3629,13 @@ holdingValues 0件
 
 とする。
 
-### 25.24 固定の並び順をAPI側で持つ理由
+### 23.24 固定の並び順をAPI側で持つ理由
 
 一覧の順序をDBの自然順に依存すると、実行環境やクエリ計画によって順序が変化する可能性がある。
 
 そのため、VAL-001では明示的な`ORDER BY`を使用する。
 
-### 25.25 クライアントからsortを受け付けない理由
+### 23.25 クライアントからsortを受け付けない理由
 
 Phase1では、商品別月末評価額一覧について複数の並び替え要件を持たない。
 
@@ -6086,7 +3650,7 @@ Phase1では、商品別月末評価額一覧について複数の並び替え�
 
 必要性が明確になった段階で拡張する。
 
-### 25.26 ページングを導入しない理由
+### 23.26 ページングを導入しない理由
 
 1利用者が1つの月末資産状況について管理する保有商品数は、Phase1では大量件数を想定していない。
 
@@ -6100,7 +3664,7 @@ cursor
 
 などを導入せず、全件取得とする。
 
-### 25.27 QueryとRepositoryを分離する理由
+### 23.27 QueryとRepositoryを分離する理由
 
 VAL-001は参照処理のみである。
 
@@ -6118,7 +3682,7 @@ Repository
 
 Repositoryを形式的に追加しない。
 
-### 25.28 FormRequestを作らない理由
+### 23.28 FormRequestを作らない理由
 
 VAL-001では、
 
@@ -6133,7 +3697,7 @@ Query Parameterなし
 
 `snapshotId`はRouteまたは共通パスパラメータ検証で扱う。
 
-### 25.29 UseCaseを設ける理由
+### 23.29 UseCaseを設ける理由
 
 VAL-001では、
 
@@ -6149,7 +3713,7 @@ DTO変換
 
 Actionへ直接Queryを記述せず、UseCaseで処理の流れを管理する。
 
-### 25.30 Actionを薄く保つ理由
+### 23.30 Actionを薄く保つ理由
 
 Actionは、
 
@@ -6167,7 +3731,7 @@ Responder
 
 DB検索や利用者境界確認をActionへ持たせない。
 
-### 25.31 月末資産状況の利用者境界を先に確認する理由
+### 23.31 月末資産状況の利用者境界を先に確認する理由
 
 `month_end_holding_values`に直接`user_id`を持たない場合でも、親となる月末資産状況で利用者境界を保証できる。
 
@@ -6185,7 +3749,7 @@ month_end_holding_values
 
 とする。
 
-### 25.32 各評価額でuserIdを再確認しない理由
+### 23.32 各評価額でuserIdを再確認しない理由
 
 正常なデータモデルでは、
 
@@ -6202,7 +3766,7 @@ asset_accounts
 
 所有関係の整合性は、登録APIとDB制約で保証する。
 
-### 25.33 DB制約を前提とする
+### 23.33 DB制約を前提とする
 
 少なくとも、
 
@@ -6218,7 +3782,7 @@ month_end_holding_values.holding_asset_id
 
 存在しない保有商品へ評価額を紐づけられないようにする。
 
-### 25.34 不整合をVAL-001で自動修復しない
+### 23.34 不整合をVAL-001で自動修復しない
 
 DB制約違反相当の不整合データが存在しても、VAL-001で
 
@@ -6232,7 +3796,7 @@ DB制約違反相当の不整合データが存在しても、VAL-001で
 
 想定外の内部状態として扱い、ログ等から調査する。
 
-### 25.35 明示的トランザクションを使用しない理由
+### 23.35 明示的トランザクションを使用しない理由
 
 VAL-001は参照専用APIである。
 
@@ -6246,7 +3810,7 @@ DB::transaction()
 
 を必須としない。
 
-### 25.36 lockForUpdateを使用しない理由
+### 23.36 lockForUpdateを使用しない理由
 
 VAL-001は商品別月末評価額を変更しない。
 
@@ -6260,7 +3824,7 @@ lockForUpdate()
 
 GET APIとして軽量な参照処理とする。
 
-### 25.37 確定済みでも参照可能とする理由
+### 23.37 確定済みでも参照可能とする理由
 
 月末資産状況の
 
@@ -6274,7 +3838,7 @@ confirmed = true
 
 そのため、VAL-001では確定・未確定のどちらでも一覧取得可能とする。
 
-### 25.38 確定状態は更新API側で利用する
+### 23.38 確定状態は更新API側で利用する
 
 商品別月末評価額の登録・更新可否は、月末資産状況の確定状態に影響される。
 
@@ -6282,7 +3846,7 @@ confirmed = true
 
 参照APIへ更新制約を持ち込まない。
 
-### 25.39 ReactではQueryとして扱う理由
+### 23.39 ReactではQueryとして扱う理由
 
 VAL-001はGETであり、副作用を持たない。
 
@@ -6296,7 +3860,7 @@ Query
 
 Mutationとして実装しない。
 
-### 25.40 snapshotIdをQuery Keyへ含める理由
+### 23.40 snapshotIdをQuery Keyへ含める理由
 
 商品別月末評価額一覧は、月末資産状況ごとに異なる。
 
@@ -6310,13 +3874,13 @@ snapshotId
 
 これにより、異なる月の一覧Cacheを誤って共有しない。
 
-### 25.41 利用者切替時のCacheに注意する
+### 23.41 利用者切替時のCacheに注意する
 
 Phase1では、`X-User-Id`で操作対象利用者を切り替える。
 
 同じ`snapshotId`文字列が別利用者環境で存在する可能性も考慮し、利用者切替時に関連Cacheを破棄する、またはQuery Keyへ`userId`を含める。
 
-### 25.42 Query KeyへuserIdを含めてもAPI引数にはしない
+### 23.42 Query KeyへuserIdを含めてもAPI引数にはしない
 
 Cache管理上、
 
@@ -6338,7 +3902,7 @@ X-User-Id
 
 として付与する。
 
-### 25.43 SNP-003と並列取得できる
+### 23.43 SNP-003と並列取得できる
 
 月末資産状況詳細画面で、
 
@@ -6361,7 +3925,7 @@ snapshotId
 
 不要な通信待ちを増やさない。
 
-### 25.44 SNP-003の情報をVAL-001へ重複させない
+### 23.44 SNP-003の情報をVAL-001へ重複させない
 
 SNP-003から、
 
@@ -6374,7 +3938,7 @@ confirmed
 
 APIごとの責務を維持する。
 
-### 25.45 VAL登録・更新後はinvalidateする
+### 23.45 VAL登録・更新後はinvalidateする
 
 商品別月末評価額を登録または更新した後は、VAL-001のCacheが古くなる。
 
@@ -6390,13 +3954,13 @@ VAL-001 invalidate
 
 を基本とする。
 
-### 25.46 Optimistic Updateを必須としない
+### 23.46 Optimistic Updateを必須としない
 
 商品別月末評価額更新後にVAL-001のCacheを手動更新することも可能である。
 
 ただし、Phase1ではサーバー確定状態を再取得する単純な方式を優先してよい。
 
-### 25.47 0件とErrorをUI上で区別する
+### 23.47 0件とErrorをUI上で区別する
 
 VAL-001の
 
@@ -6417,7 +3981,7 @@ Success
 
 をReact側で明確に区別する。
 
-### 25.48 未登録商品をReact側で0円補完しない
+### 23.48 未登録商品をReact側で0円補完しない
 
 VAL-001に存在しない保有商品について、
 
@@ -6441,7 +4005,7 @@ value = 0
 
 そのため、VAL-001単独の結果から疑似的な0円データを生成しない。
 
-### 25.49 一覧表示用にHLD-003を追加呼び出ししない
+### 23.49 一覧表示用にHLD-003を追加呼び出ししない
 
 VAL-001では、表示に必要な
 
@@ -6456,7 +4020,7 @@ assetType
 
 フロントエンド側のN+1的なHTTP通信を防止する。
 
-### 25.50 Phase1では設計を広げすぎない
+### 23.50 Phase1では設計を広げすぎない
 
 VAL-001では、以下を対象外とする。
 
@@ -6487,7 +4051,7 @@ Phase1では、
 
 ことへ責務を限定する。
 
-## 26. 関連ドキュメント
+## 24. 関連ドキュメント
 
 - [API共通方針](../../api-common-policy.md)
 - [API一覧](../../api-list.md)
